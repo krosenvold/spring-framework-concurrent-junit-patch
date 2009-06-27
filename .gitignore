@@ -1,7 +1,8 @@
 *.ipr
 *.iwr
-ivy-cache/
-target/
-*/target/
-integration-repo/
+#ivy-cache/
+#target/
+#*/target/
+#integration-repo/
+trunk
 
