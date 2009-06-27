@@ -1,0 +1,2 @@
+mvn install:install-file -DgroupId=org.aspectj -DartifactId=aspectjrt -Dversion=1.6.5-patch281654 -DgeneratePom=true -Dpackaging=jar -Dfile=aspectjrt-1.6.5-patch281654.jar
+mvn install:install-file -DgroupId=org.aspectj -DartifactId=aspectjweaver -Dversion=1.6.5-patch281654 -DgeneratePom=true -Dpackaging=jar -Dfile=aspectjweaver-1.6.5-patch281654.jar
