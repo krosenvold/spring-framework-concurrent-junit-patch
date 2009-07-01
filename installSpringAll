@@ -1,12 +1,23 @@
-export ARTVERSION=1447
-echo "Setting up version 3.0.0.BUILD$ARTVERSION"
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-test -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.test/target/artifacts/org.springframework.test.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-test -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=trunk/org.springframework.test/target/artifacts/org.springframework.test-sources.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-beans -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.beans/target/artifacts/org.springframework.beans.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-beans -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=trunk/org.springframework.beans/target/artifacts/org.springframework.beans-sources.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-context -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.context/target/artifacts/org.springframework.context.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-context -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=trunk/org.springframework.context/target/artifacts/org.springframework.context-sources.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-core -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.core/target/artifacts/org.springframework.core.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-core -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=trunk/org.springframework.core/target/artifacts/org.springframework.core-sources.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-web -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.web/target/artifacts/org.springframework.web.jar
-mvn -q install:install-file -DgroupId=org.springframework -DartifactId=spring-web -Dversion=3.0.0.BUILD$ARTVERSION -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=trunk/org.springframework.web/target/artifacts/org.springframework.web-sources.jar
+cd trunk/org.springframework.core
+ant publish-maven-local
+cd ../org.springframework.web
+ant publish-maven-local
+cd ../org.springframework.test
+ant publish-maven-local
+cd ../org.springframework.context
+ant publish-maven-local
+cd ../org.springframework.context.support
+ant publish-maven-local
+cd ../org.springframework.aop
+ant publish-maven-local
+cd ../org.springframework.beans
+ant publish-maven-local
+cd ../org.springframework.asm
+ant publish-maven-local
+cd ../org.springframework.expression
+ant publish-maven-local
+cd ../..
+mvn install:install-file -DgroupId=org.aopalliance -DartifactId=com.springsource.org.aopalliance -Dversion=1.0.0 -Dpackaging=jar -Dfile=trunk/ivy-cache/repository/org.aopalliance/com.springsource.org.aopalliance/1.0.0/com.springsource.org.aopalliance-1.0.0.jar
+mvn install:install-file -DgroupId=org.apache.commons -DartifactId=com.springsource.org.apache.commons.logging -Dversion=1.1.1 -Dpackaging=jar -Dfile=trunk/ivy-cache/repository/org.apache.commons/com.springsource.org.apache.commons.logging/1.1.1/com.springsource.org.apache.commons.logging-1.1.1.jar
+echo "You can see the version number on the deploy lines above. If you're missing artifacts, better add them to this file "
+echo "because addSpringMost seems to be the best name"
