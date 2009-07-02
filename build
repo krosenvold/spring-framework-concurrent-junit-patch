@@ -1,6 +1,0 @@
-#!/bin/bash
-cd trunk/build-spring-framework
-ant clean
-ant
-
-

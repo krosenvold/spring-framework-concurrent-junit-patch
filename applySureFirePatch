@@ -1,4 +1,4 @@
 #!/bin/bash
 cd sureFireTrunk
-patch -p1 <../surefire.patch
+patch -p0 <../surefire.patch
 

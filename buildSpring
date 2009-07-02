@@ -1,0 +1,6 @@
+#!/bin/bash
+cd springTrunk/build-spring-framework
+ant clean
+ant
+
+
