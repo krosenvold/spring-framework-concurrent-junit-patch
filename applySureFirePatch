@@ -1,0 +1,4 @@
+#!/bin/bash
+cd sureFireTrunk
+patch -p0 <../surefire.patch
+

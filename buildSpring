@@ -1,0 +1,7 @@
+#!/bin/bash
+cd springTrunk/build-spring-framework
+export ANT_OPTS="-Xmx512m -XX:PermSize=128m -XX:MaxPermSize=128m"
+ant clean
+ant
+
+

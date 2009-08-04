@@ -1,1 +1,0 @@
- mvn install:install-file -DgroupId=org.springframework -DartifactId=spring-web -Dversion=3.0.0.BUILD1447 -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.web/target/artifacts/org.springframework.web.jar

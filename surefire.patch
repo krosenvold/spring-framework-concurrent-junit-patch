@@ -1,0 +1,1307 @@
+Index: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreDirectoryTestSuite.java
+===================================================================
+--- surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreDirectoryTestSuite.java	(revision 0)
++++ surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreDirectoryTestSuite.java	(revision 0)
+@@ -0,0 +1,122 @@
++package org.apache.maven.surefire.junitcore;
++
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import org.apache.maven.surefire.suite.SurefireTestSuite;
++import org.apache.maven.surefire.testset.TestSetFailedException;
++import org.apache.maven.surefire.report.ReporterManager;
++import org.apache.maven.surefire.report.ReporterException;
++import org.apache.maven.surefire.util.SurefireDirectoryScanner;
++
++import java.util.*;
++import java.io.File;
++
++/**
++ * Test suite for JUnitCore based on a directory of Java test classes.
++ *
++ * @author Karl M. Davis
++ * @author Kristian Rosenvold (junit core adaption)
++ */
++public class JUnitCoreDirectoryTestSuite implements SurefireTestSuite {
++    private final SurefireDirectoryScanner directoryScanner;
++
++    private static final String METHODS ="methods";
++    private static final String CLASSES ="classes";
++    private static final String BOTH ="both";
++
++    protected Map testSets;
++    int totalTests;
++    private final JunitCoreParameters junitCoreParameters;
++
++
++    public JUnitCoreDirectoryTestSuite(File basedir, ArrayList includes, ArrayList excludes, Properties properties) {
++        directoryScanner = new SurefireDirectoryScanner(basedir, includes, excludes);
++        this.junitCoreParameters = new JunitCoreParameters(properties);
++    }
++
++
++    public void execute(ReporterManager reporterManager, ClassLoader classLoader)
++            throws ReporterException, TestSetFailedException {
++        if (testSets == null) {
++            throw new IllegalStateException("You must call locateTestSets before calling execute");
++        }
++        List items = new ArrayList();
++        for (Iterator i = testSets.values().iterator(); i.hasNext();) {
++            items.add( i.next());
++        }
++        Class[] classes = new Class[items.size()];
++        for (int i = 0; i < items.size(); i++){
++            classes[i] = ((JUnitCoreTestSet) items.get(i)).testClass;
++        }
++
++
++        JUnitCoreTestSet.execute(classes, reporterManager, junitCoreParameters);
++    }
++
++    private boolean isParalellMethods(String propName){
++        return propName != null && (METHODS.equals(propName.toLowerCase()) || BOTH.equals(propName.toLowerCase()));
++    }
++    private boolean isParalellClasses(String propName){
++        return propName != null && (CLASSES.equals(propName.toLowerCase()) || BOTH.equals(propName.toLowerCase()));
++    }
++
++    public void execute(String testSetName, ReporterManager reporterManager, ClassLoader classLoader)
++            throws ReporterException, TestSetFailedException {
++        if (testSets == null) {
++            throw new IllegalStateException("You must call locateTestSets before calling execute");
++        }
++        JUnitCoreTestSet testSet = (JUnitCoreTestSet) testSets.get(testSetName);
++
++        if (testSet == null) {
++            throw new TestSetFailedException("Unable to find test set '" + testSetName + "' in suite");
++        }
++        testSet.execute(reporterManager, junitCoreParameters);
++    }
++
++    public Map locateTestSets(ClassLoader classLoader)
++            throws TestSetFailedException {
++        if (testSets != null) {
++            throw new IllegalStateException("You can't call locateTestSets twice");
++        }
++
++        testSets = new HashMap();
++        Class[] locatedClasses = directoryScanner.locateTestClasses(classLoader);
++        for (int i = 0; i < locatedClasses.length; i++) {
++            Class testClass = locatedClasses[i];
++            JUnitCoreTestSet testSet = new JUnitCoreTestSet(testClass);
++
++            if (testSets.containsKey(testSet.getName())) {
++                throw new TestSetFailedException("Duplicate test set '" + testSet.getName() + "'");
++            }
++            testSets.put(testSet.getName(), testSet);
++
++            totalTests++;
++        }
++
++        return Collections.unmodifiableMap(testSets);
++    }
++
++    public int getNumTests() {
++        if (testSets == null) {
++            throw new IllegalStateException("You must call locateTestSets before calling getNumTests");
++        }
++        return testSets.size();
++    }
++}
+
+Property changes on: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreDirectoryTestSuite.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSetReporter.java
+===================================================================
+--- surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSetReporter.java	(revision 0)
++++ surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSetReporter.java	(revision 0)
+@@ -0,0 +1,171 @@
++package org.apache.maven.surefire.junitcore;
++
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import java.util.ResourceBundle;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++import org.apache.maven.surefire.Surefire;
++import org.apache.maven.surefire.report.ReportEntry;
++import org.apache.maven.surefire.report.ReporterManager;
++import org.junit.runner.Description;
++import org.junit.runner.Result;
++import org.junit.runner.notification.Failure;
++import org.junit.runner.notification.RunListener;
++
++public class JUnitCoreTestSetReporter
++    extends RunListener
++{
++    // Constants
++    private static ResourceBundle bundle = ResourceBundle.getBundle( Surefire.SUREFIRE_BUNDLE_NAME );
++
++
++    private ReporterManager reportMgr;
++
++    /**
++     * This flag is set after a failure has occurred so that a <code>testSucceeded</code> event is not fired.  This is necessary because JUnit4 always fires a <code>testRunFinished</code> event-- even if there was a failure.
++     */
++    private boolean failureFlag;
++
++    /**
++     * Constructor.
++     *
++     * @param reportManager the report manager to log testing events to
++     */
++    JUnitCoreTestSetReporter(ReporterManager reportManager)
++    {
++        this.reportMgr = reportManager;
++    }
++
++    /**
++     * Called right before any tests from a specific class are run.
++     *
++     * @see org.junit.runner.notification.RunListener#testRunStarted(org.junit.runner.Description)
++     */
++    public void testRunStarted( Description description )
++        throws Exception
++    {
++        String rawString = bundle.getString( "testSetStarting" );
++        ReportEntry report = new ReportEntry( description.getClassName(), description.getDisplayName(), rawString );
++
++        this.reportMgr.testSetStarting( report );
++    }
++
++    /**
++     * Called right after all tests from a specific class are run.
++     *
++     * @see org.junit.runner.notification.RunListener#testRunFinished(org.junit.runner.Result)
++     */
++    public void testRunFinished( Result result )
++        throws Exception
++    {
++        String rawString = bundle.getString( "testSetCompletedNormally" );
++        ReportEntry report = new ReportEntry( result.getClass().getCanonicalName(), result.getClass().getName(), rawString );
++        this.reportMgr.testSetCompleted( report );
++        this.reportMgr.reset();
++    }
++
++    /**
++     * Called when a specific test has been skipped (for whatever reason).
++     *
++     * @see org.junit.runner.notification.RunListener#testIgnored(org.junit.runner.Description)
++     */
++    public void testIgnored( Description description )
++        throws Exception
++    {
++        String rawString = bundle.getString( "testSkipped" );
++        ReportEntry report = new ReportEntry( extractClassName( description ), description.getDisplayName(), rawString );
++
++        this.reportMgr.testSkipped( report );
++    }
++
++    /**
++     * Called when a specific test has started.
++     *
++     * @see org.junit.runner.notification.RunListener#testStarted(org.junit.runner.Description)
++     */
++    public void testStarted( Description description )
++        throws Exception
++    {
++        String rawString = bundle.getString( "testStarting" );
++        ReportEntry report = new ReportEntry( extractClassName( description ), description.getDisplayName(), rawString );
++
++        this.reportMgr.testStarting( report );
++
++        this.failureFlag = false;
++    }
++
++    /**
++     * Called when a specific test has failed.
++     *
++     * @see org.junit.runner.notification.RunListener#testFailure(org.junit.runner.notification.Failure)
++     */
++    public void testFailure( Failure failure )
++        throws Exception
++    {
++        String rawString = bundle.getString( "executeException" );
++        ReportEntry report =
++            new ReportEntry( extractClassName( failure.getDescription() ), failure.getTestHeader(), rawString, new JUnitCoreStackTraceWriter( failure ) );
++
++        if ( failure.getException() instanceof AssertionError )
++        {
++            this.reportMgr.testFailed( report );
++        }
++        else
++        {
++            this.reportMgr.testError( report );
++        }
++
++        failureFlag = true;
++    }
++
++    /**
++     * Called after a specific test has finished.
++     *
++     * @see org.junit.runner.notification.RunListener#testFinished(org.junit.runner.Description)
++     */
++    public void testFinished( Description description )
++        throws Exception
++    {
++        if ( failureFlag == false )
++        {
++            String rawString = bundle.getString( "testSuccessful" );
++            ReportEntry report = new ReportEntry( extractClassName( description ), description.getDisplayName(), rawString );
++
++            this.reportMgr.testSucceeded( report );
++        }
++    }
++    
++    private String extractClassName( Description description )
++    {
++        String displayName = description.getDisplayName();
++        final Pattern PARENS = Pattern.compile(
++                "^" +
++                "[^\\(\\)]+" + //non-parens
++        		"\\((" + // then an open-paren (start matching a group)
++        		"[^\\\\(\\\\)]+" + //non-parens
++        		")\\)" +
++        		"$" ); // then a close-paren (end group match)
++        Matcher m = PARENS.matcher( displayName );
++        if (!m.find()) return displayName;
++        return m.group( 1 );
++    }
++}
+
+Property changes on: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSetReporter.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreStackTraceWriter.java
+===================================================================
+--- surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreStackTraceWriter.java	(revision 0)
++++ surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreStackTraceWriter.java	(revision 0)
+@@ -0,0 +1,78 @@
++package org.apache.maven.surefire.junitcore;
++
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import org.apache.maven.surefire.report.StackTraceWriter;
++import org.junit.runner.notification.Failure;
++
++/**
++ * Writes out a specific {@link org.junit.runner.notification.Failure} for
++ * surefire as a stacktrace.
++ *
++ * @author Karl M. Davis
++ * @author Kristian Rosenvold (junit core adaption)
++ */
++public class JUnitCoreStackTraceWriter
++    implements StackTraceWriter
++{
++    // Member Variables
++    private Failure junitFailure;
++
++    /**
++     * Constructor.
++     *
++     * @param junitFailure the {@link Failure} that this will be operating on
++     */
++    public JUnitCoreStackTraceWriter( Failure junitFailure )
++    {
++        this.junitFailure = junitFailure;
++    }
++
++    /*
++      * (non-Javadoc)
++      *
++      * @see org.apache.maven.surefire.report.StackTraceWriter#writeTraceToString()
++      */
++    public String writeTraceToString()
++    {
++        return junitFailure.getTrace();
++    }
++
++    /**
++     * At the moment, returns the same as {@link #writeTraceToString()}.
++     *
++     * @see org.apache.maven.surefire.report.StackTraceWriter#writeTrimmedTraceToString()
++     */
++    public String writeTrimmedTraceToString()
++    {
++        return junitFailure.getTrace();
++    }
++
++    /**
++     * Returns the exception associated with this failure.
++     *
++     * @see org.apache.maven.surefire.report.StackTraceWriter#getThrowable()
++     */
++    public Throwable getThrowable()
++    {
++        return junitFailure.getException();
++    }
++
++}
+
+Property changes on: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreStackTraceWriter.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JunitCoreParameters.java
+===================================================================
+--- surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JunitCoreParameters.java	(revision 0)
++++ surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JunitCoreParameters.java	(revision 0)
+@@ -0,0 +1,62 @@
++package org.apache.maven.surefire.junitcore;
++
++import java.util.Properties;
++
++/**
++ * @author Kristian Rosenvold
++ */
++public class JunitCoreParameters {
++
++    private final String parallel;
++    private final Boolean perCoreThreadCount;
++    private final int threadCount;
++    private final Boolean useUnlimitedThreads;
++
++
++    public JunitCoreParameters(Properties properties) {
++        this.parallel = properties.getProperty("parallel", "none").toLowerCase();
++        this.perCoreThreadCount = Boolean.valueOf( properties.getProperty("perCoreThreadCount", "true"));
++        this.threadCount = Integer.valueOf(properties.getProperty("threadCount", "8"));
++        this.useUnlimitedThreads = Boolean.valueOf(properties.getProperty("useUnlimitedThreads", "false").toLowerCase());
++        System.out.println("" + this.toString());
++    }
++
++    public boolean isParallelMethod(){
++        return "methods".equals( parallel);
++    }
++    public boolean isParallelClasses(){
++        return "classes".equals( parallel);
++    }
++    public boolean isParallelBoth(){
++        return "both".equals( parallel);
++    }
++
++    public Boolean isPerCoreThreadCount() {
++        return perCoreThreadCount;
++    }
++
++    public int getThreadCount() {
++        return threadCount;
++    }
++
++    public Boolean isUseUnlimitedThreads() {
++        return useUnlimitedThreads;
++    }
++
++    public boolean isNoThreading(){
++        return !(isParallelClasses() || isParallelMethod() || isParallelBoth());
++    }
++    public boolean isAnyParallelitySelected(){
++        return !isNoThreading();
++    }
++
++    @Override
++    public String toString() {
++        return "JunitCoreParameters{" +
++                "parallel='" + parallel + '\'' +
++                ", perCoreThreadCount=" + perCoreThreadCount +
++                ", threadCount=" + threadCount +
++                ", useUnlimitedThreads=" + useUnlimitedThreads +
++                '}';
++    }
++}
+
+Property changes on: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JunitCoreParameters.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSet.java
+===================================================================
+--- surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSet.java	(revision 0)
++++ surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSet.java	(revision 0)
+@@ -0,0 +1,109 @@
++package org.apache.maven.surefire.junitcore;
++
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import org.apache.maven.surefire.report.ReporterManager;
++import org.apache.maven.surefire.testset.TestSetFailedException;
++import org.junit.runner.JUnitCore;
++import org.junit.runner.notification.RunListener;
++import org.junit.experimental.ConfigurableParallelComputer;
++import org.junit.experimental.DemultiplexingRunListener;
++
++import java.util.concurrent.ExecutionException;
++
++
++/**
++ * Writes out a specific {@link org.junit.runner.notification.Failure} for
++ * surefire as a stacktrace.
++ *
++ * @author Karl M. Davis
++ * @author Kristian Rosenvold (junit core adaption)
++ */
++
++public class JUnitCoreTestSet
++{
++    Class testClass;
++
++    public String getName(){
++        return testClass.getCanonicalName();
++    }
++    /**
++     * Constructor.
++     *
++     * @param testClasses the classes to be run as a test
++     */
++    protected JUnitCoreTestSet( Class testClasses )
++    {
++        this.testClass = testClasses;
++    }
++
++    /**
++     * Actually runs the test and adds the tests results to the <code>reportManager</code>.
++     *
++     * @param junitCoreParameters The parameters for this test
++     * @param reportManager The report manager
++     * @see org.apache.maven.surefire.testset.SurefireTestSet#execute(org.apache.maven.surefire.report.ReporterManager,java.lang.ClassLoader)
++     * @throws TestSetFailedException If something fails
++     */
++    public void execute(ReporterManager reportManager, JunitCoreParameters junitCoreParameters)
++        throws TestSetFailedException
++    {
++
++        Class[] classes = new Class[1];
++        classes[0] = testClass;
++        execute(classes, reportManager, junitCoreParameters);
++    }
++    
++    public static void execute(Class[] classes, ReporterManager reportManager, JunitCoreParameters junitCoreParameters)
++
++        throws TestSetFailedException
++    {
++        JUnitCore junitCore = new JUnitCore();
++
++        RunListener real = new JUnitCoreTestSetReporter(reportManager );
++        RunListener demultiplexingRunListener = new DemultiplexingRunListener(real);
++        junitCore.addListener( demultiplexingRunListener);
++        
++        ConfigurableParallelComputer parallelComputer;
++        if (junitCoreParameters.isNoThreading()) { 
++            parallelComputer = new ConfigurableParallelComputer(false, false);
++        } else if (junitCoreParameters.isUseUnlimitedThreads())
++            parallelComputer = new ConfigurableParallelComputer();
++        else  {
++            parallelComputer = new ConfigurableParallelComputer(junitCoreParameters.isParallelClasses(), junitCoreParameters.isParallelMethod(),
++                                                                junitCoreParameters.getThreadCount(), junitCoreParameters.isPerCoreThreadCount());
++        }
++        try
++        {
++            junitCore.run(parallelComputer, classes);
++        }
++        finally
++        {
++            try {
++                parallelComputer.close();
++            } catch (ExecutionException e) {
++                throw new TestSetFailedException(e);
++            }
++            junitCore.removeListener( demultiplexingRunListener );
++            reportManager.reset();
++        }
++    }
++
++}
+
+Property changes on: surefire-providers/surefire-junitcore/src/main/java/org/apache/maven/surefire/junitcore/JUnitCoreTestSet.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/surefire-junitcore/pom.xml
+===================================================================
+--- surefire-providers/surefire-junitcore/pom.xml	(revision 0)
++++ surefire-providers/surefire-junitcore/pom.xml	(revision 0)
+@@ -0,0 +1,77 @@
++<!--
++  ~ Licensed to the Apache Software Foundation (ASF) under one
++  ~ or more contributor license agreements.  See the NOTICE file
++  ~ distributed with this work for additional information
++  ~ regarding copyright ownership.  The ASF licenses this file
++  ~ to you under the Apache License, Version 2.0 (the
++  ~ "License"); you may not use this file except in compliance
++  ~ with the License.  You may obtain a copy of the License at
++  ~
++  ~     http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing,
++  ~ software distributed under the License is distributed on an
++  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++  ~ KIND, either express or implied.  See the License for the
++  ~ specific language governing permissions and limitations
++  ~ under the License.
++  -->
++
++<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
++    <modelVersion>4.0.0</modelVersion>
++
++    <parent>
++        <groupId>org.apache.maven.surefire</groupId>
++        <artifactId>surefire-providers</artifactId>
++        <version>2.5-SNAPSHOT</version>
++        <relativePath>../pom.xml</relativePath>
++    </parent>
++
++    <artifactId>surefire-junitcore</artifactId>
++
++    <name>SureFire JUnitCore Runner</name>
++
++    <dependencies>
++        <dependency>
++            <groupId>junit</groupId>
++            <artifactId>junit</artifactId>
++            <version>4.6</version>
++        </dependency>
++        <dependency>
++            <groupId>org.codehaus.plexus</groupId>
++            <artifactId>plexus-utils</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.junit</groupId>
++            <artifactId>configurable-parallel-computer</artifactId>
++            <version>1.0-SNAPSHOT</version>
++        </dependency>
++
++    </dependencies>
++
++    <build>
++        <plugins>
++            <plugin>
++                <artifactId>maven-compiler-plugin</artifactId>
++                <configuration>
++                    <fork>false</fork>
++                    <compilerVersion>1.4</compilerVersion>
++                </configuration>
++            </plugin>
++            <plugin>
++                <artifactId>maven-surefire-plugin</artifactId>
++                <configuration>
++                    <jvm>${java.home}/bin/java</jvm>
++                </configuration>
++            </plugin>
++            <plugin>
++                <artifactId>maven-compiler-plugin</artifactId>
++                <configuration>
++                    <source>1.5</source>
++                    <target>1.5</target>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
+
+Property changes on: surefire-providers/surefire-junitcore/pom.xml
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-providers/pom.xml
+===================================================================
+--- surefire-providers/pom.xml	(revision 790466)
++++ surefire-providers/pom.xml	(working copy)
+@@ -36,6 +36,7 @@
+   <modules>
+     <module>surefire-junit</module>
+     <module>surefire-junit4</module>
++    <module>surefire-junitcore</module>
+     <module>surefire-testng</module>
+   </modules>
+ 
+Index: maven-surefire-plugin/src/main/java/org/apache/maven/plugin/surefire/SurefirePlugin.java
+===================================================================
+--- maven-surefire-plugin/src/main/java/org/apache/maven/plugin/surefire/SurefirePlugin.java	(revision 790466)
++++ maven-surefire-plugin/src/main/java/org/apache/maven/plugin/surefire/SurefirePlugin.java	(working copy)
+@@ -425,10 +425,28 @@
+     private int threadCount;
+ 
+     /**
++     * (junitcore only) Indicates that threadCount is per cpu core. Defaults to true
++     *
++     * @parameter expression="${perCoreThreadCount}"
++     * @since 2.5
++     */
++    private String perCoreThreadCount;
++
++    /**
++     * (junitcore only) Indicates that the thread pool will be unlimited. paralell setting and the actual number of classes/methods
++     * will decide. Setting this to true effectively disables perCoreThreadCount and  threadCount
++     *
++     * @parameter expression="${useUnlimitedThreads}"
++     * @since 2.5
++     */
++    private String useUnlimitedThreads;
++    /**
+      * (TestNG only) When you use the parallel attribute, TestNG will try to run all your test methods in separate threads, except for
+      * methods that depend on each other, which will be run in the same thread in order to respect their order of
+      * execution.
+      *
++     * JUNIT4.6 Values are classes/methods/both to run in separate threads, as controlled by threadCount.
++     *
+      * @parameter expression="${parallel}"
+      * @todo test how this works with forking, and console/file output parallelism
+      * @since 2.2
+@@ -663,6 +681,50 @@
+         }
+     }
+ 
++    /**
++     * Converts old TestNG configuration parameters over to new properties based configuration
++     * method. (if any are defined the old way)
++     */
++    private void convertJunitCoreParameters()
++    {
++        if ( properties == null )
++        {
++            properties = new Properties();
++        }
++
++        if ( this.parallel != null )
++        {
++            properties.setProperty( "parallel", this.parallel );
++        }
++        if ( this.threadCount > 0 )
++        {
++            properties.setProperty( "threadCount", new Integer( this.threadCount ).toString() );
++        }
++        if ( this.perCoreThreadCount != null )
++        {
++            properties.setProperty( "perCoreThreadCount", perCoreThreadCount);
++        }
++        if ( this.useUnlimitedThreads != null )
++        {
++            properties.setProperty( "useUnlimitedThreads", useUnlimitedThreads);
++        }
++    }
++
++    private boolean isJunitCoreCompliant(Artifact artifact){
++          return artifact != null && artifact.getBaseVersion() != null && (artifact.getBaseVersion().startsWith( "4" ) && !isJunit40to46(artifact));
++    }
++    private boolean isJunit40to46(Artifact artifact){
++        return artifact != null && artifact.getBaseVersion() != null && (
++                artifact.getBaseVersion().startsWith( "4.0" ) ||
++                artifact.getBaseVersion().startsWith( "4.1" ) ||
++                artifact.getBaseVersion().startsWith( "4.2" ) ||
++                artifact.getBaseVersion().startsWith( "4.3" ) ||
++                artifact.getBaseVersion().startsWith( "4.4" ) ||
++                artifact.getBaseVersion().startsWith( "4.5" ) ||
++                artifact.getBaseVersion().startsWith( "4.6" ) 
++        ); // :)
++    }
++
+     private SurefireBooter constructSurefireBooter()
+         throws MojoExecutionException, MojoFailureException
+     {
+@@ -715,8 +777,13 @@
+                 // different one since its based on the source level, not the JVM. Prune using the filter.
+                 addProvider( surefireBooter, "surefire-testng", surefireArtifact.getBaseVersion(), testNgArtifact );
+             }
+-            else if ( junitArtifact != null && junitArtifact.getBaseVersion().startsWith( "4" ) )
++            else if ( isJunitCoreCompliant( junitArtifact))
+             {
++                convertJunitCoreParameters();                
++                addProvider( surefireBooter, "surefire-junitcore", surefireArtifact.getBaseVersion(), null );
++            }
++            else if ( isJunit40to46( junitArtifact ))
++            {
+                 addProvider( surefireBooter, "surefire-junit4", surefireArtifact.getBaseVersion(), null );
+             }
+             else
+@@ -807,29 +874,29 @@
+                 }
+             }
+ 
+-            if ( testNgArtifact != null )
+-            {
+-                surefireBooter.addTestSuite( "org.apache.maven.surefire.testng.TestNGDirectoryTestSuite", new Object[] {
+-                    testClassesDirectory, includes, excludes, testSourceDirectory.getAbsolutePath(),
+-                    testNgArtifact.getVersion(), testNgArtifact.getClassifier(), properties, reportsDirectory} );
+-            }
+-            else
+-            {
++            if (testNgArtifact != null) {
++                surefireBooter.addTestSuite("org.apache.maven.surefire.testng.TestNGDirectoryTestSuite", new Object[]{
++                        testClassesDirectory, includes, excludes, testSourceDirectory.getAbsolutePath(),
++                        testNgArtifact.getVersion(), testNgArtifact.getClassifier(), properties, reportsDirectory});
++            } else {
+                 String junitDirectoryTestSuite;
+-                if ( junitArtifact != null && junitArtifact.getBaseVersion() != null &&
+-                    junitArtifact.getBaseVersion().startsWith( "4" ) )
++                if (isJunitCoreCompliant(junitArtifact))
+                 {
+-                    junitDirectoryTestSuite = "org.apache.maven.surefire.junit4.JUnit4DirectoryTestSuite";
++                    junitDirectoryTestSuite = "org.apache.maven.surefire.junitcore.JUnitCoreDirectoryTestSuite";
++                    getLog().warn( "Props are" + properties.toString());
++                    surefireBooter.addTestSuite(junitDirectoryTestSuite, new Object[]{testClassesDirectory, includes, excludes, properties});
++                } else {
++                    if (isJunit40to46(junitArtifact))
++                    {
++                        junitDirectoryTestSuite = "org.apache.maven.surefire.junit4.JUnit4DirectoryTestSuite";
++                    } else {
++                        // fall back to JUnit, which also contains POJO support. Also it can run
++                        // classes compiled against JUnit since it has a dependency on JUnit itself.
++                        junitDirectoryTestSuite = "org.apache.maven.surefire.junit.JUnitDirectoryTestSuite";
++                    }
++                    surefireBooter.addTestSuite(junitDirectoryTestSuite, new Object[]{testClassesDirectory, includes, excludes});
+                 }
+-                else
+-                {
+-                    junitDirectoryTestSuite = "org.apache.maven.surefire.junit.JUnitDirectoryTestSuite";
+-                }
+ 
+-                // fall back to JUnit, which also contains POJO support. Also it can run
+-                // classes compiled against JUnit since it has a dependency on JUnit itself.
+-                surefireBooter.addTestSuite( junitDirectoryTestSuite, new Object[] { testClassesDirectory, includes,
+-                    excludes } );
+             }
+         }
+ 
+Index: surefire-integration-tests/pom.xml
+===================================================================
+--- surefire-integration-tests/pom.xml	(revision 790466)
++++ surefire-integration-tests/pom.xml	(working copy)
+@@ -74,7 +74,7 @@
+                <value>${project.version}</value>
+             </property>
+           </systemProperties>
+-          
++
+         </configuration>
+       </plugin>
+     </plugins>
+Index: surefire-api/src/test/java/org/apache/maven/surefire/util/SurefireDirectoryScannerTest.java
+===================================================================
+--- surefire-api/src/test/java/org/apache/maven/surefire/util/SurefireDirectoryScannerTest.java	(revision 0)
++++ surefire-api/src/test/java/org/apache/maven/surefire/util/SurefireDirectoryScannerTest.java	(revision 0)
+@@ -0,0 +1,45 @@
++package org.apache.maven.surefire.util;
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import junit.framework.TestCase;
++
++import java.io.File;
++import java.io.IOException;
++import java.util.List;
++import java.util.ArrayList;
++
++import org.apache.maven.surefire.testset.TestSetFailedException;
++
++/**
++ * Test of the directory scanner.
++ */
++public class SurefireDirectoryScannerTest extends TestCase {
++    public void testLocateTestClasses() throws IOException, TestSetFailedException {
++        File baseDir = new File(new File(".").getCanonicalPath());
++        List include = new ArrayList();
++        include.add ("**/*ZT*A.java");
++        List exclude = new ArrayList();
++        
++        SurefireDirectoryScanner surefireDirectoryScanner = new SurefireDirectoryScanner(baseDir, include, exclude);
++        String[] classNames = surefireDirectoryScanner.collectTests();
++        assertNotNull( classNames);
++        assertEquals(3, classNames.length);
++   }
++}
+
+Property changes on: surefire-api/src/test/java/org/apache/maven/surefire/util/SurefireDirectoryScannerTest.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT1A.java
+===================================================================
+--- surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT1A.java	(revision 0)
++++ surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT1A.java	(revision 0)
+@@ -0,0 +1,11 @@
++package org.apache.maven.surefire.util.testdata;
++
++/**
++ * Created by IntelliJ IDEA.
++ * User: kristian
++ * Date: Jun 21, 2009
++ * Time: 8:12:27 PM
++ * To change this template use File | Settings | File Templates.
++ */
++public class DataZT1A {
++}
+
+Property changes on: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT1A.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT2A.java
+===================================================================
+--- surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT2A.java	(revision 0)
++++ surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT2A.java	(revision 0)
+@@ -0,0 +1,11 @@
++package org.apache.maven.surefire.util.testdata;
++
++/**
++ * Created by IntelliJ IDEA.
++ * User: kristian
++ * Date: Jun 21, 2009
++ * Time: 8:12:27 PM
++ * To change this template use File | Settings | File Templates.
++ */
++public class DataZT2A {
++}
+\ No newline at end of file
+
+Property changes on: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT2A.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT3A.java
+===================================================================
+--- surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT3A.java	(revision 0)
++++ surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT3A.java	(revision 0)
+@@ -0,0 +1,11 @@
++package org.apache.maven.surefire.util.testdata;
++
++/**
++ * Created by IntelliJ IDEA.
++ * User: kristian
++ * Date: Jun 21, 2009
++ * Time: 8:12:27 PM
++ * To change this template use File | Settings | File Templates.
++ */
++public class DataZT3A {
++}
+\ No newline at end of file
+
+Property changes on: surefire-api/src/test/java/org/apache/maven/surefire/util/testdata/DataZT3A.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+
+Index: surefire-api/src/main/java/org/apache/maven/surefire/suite/AbstractDirectoryTestSuite.java
+===================================================================
+--- surefire-api/src/main/java/org/apache/maven/surefire/suite/AbstractDirectoryTestSuite.java	(revision 790466)
++++ surefire-api/src/main/java/org/apache/maven/surefire/suite/AbstractDirectoryTestSuite.java	(working copy)
+@@ -20,17 +20,14 @@
+  */
+ 
+ import org.apache.maven.surefire.Surefire;
++import org.apache.maven.surefire.util.SurefireDirectoryScanner;
+ import org.apache.maven.surefire.report.ReportEntry;
+ import org.apache.maven.surefire.report.ReporterException;
+ import org.apache.maven.surefire.report.ReporterManager;
+ import org.apache.maven.surefire.testset.SurefireTestSet;
+ import org.apache.maven.surefire.testset.TestSetFailedException;
+-import org.codehaus.plexus.util.DirectoryScanner;
+-import org.codehaus.plexus.util.StringUtils;
+ 
+ import java.io.File;
+-import java.lang.reflect.Modifier;
+-import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.Iterator;
+@@ -43,27 +40,16 @@
+ {
+     protected static ResourceBundle bundle = ResourceBundle.getBundle( Surefire.SUREFIRE_BUNDLE_NAME );
+ 
+-    private static final String FS = System.getProperty( "file.separator" );
+-
+-    private File basedir;
+-
+-    private List includes;
+-
+-    private List excludes;
+-
+     protected Map testSets;
+ 
+     private int totalTests;
++    
++    private final SurefireDirectoryScanner surefireDirectoryScanner;
+ 
+-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
+ 
+     protected AbstractDirectoryTestSuite( File basedir, List includes, List excludes )
+     {
+-        this.basedir = basedir;
+-
+-        this.includes = new ArrayList( includes );
+-
+-        this.excludes = new ArrayList( excludes );
++        this.surefireDirectoryScanner = new SurefireDirectoryScanner(basedir, includes, excludes);
+     }
+ 
+     public Map locateTestSets( ClassLoader classLoader )
+@@ -75,26 +61,13 @@
+         }
+         testSets = new HashMap();
+ 
+-        String[] tests = collectTests( basedir, includes, excludes );
++        Class[] locatedClasses = surefireDirectoryScanner.locateTestClasses( classLoader);
+ 
+-        for ( int i = 0; i < tests.length; i++ )
++        for ( int i = 0; i < locatedClasses.length; i++ )
+         {
+-            String className = tests[i];
++            Class testClass = locatedClasses[i];
++            SurefireTestSet testSet = createTestSet( testClass, classLoader );
+ 
+-            Class testClass;
+-            try
+-            {
+-                testClass = classLoader.loadClass( className );
+-            }
+-            catch ( ClassNotFoundException e )
+-            {
+-                throw new TestSetFailedException( "Unable to create test class '" + className + "'", e );
+-            }
+-
+-            if ( !Modifier.isAbstract( testClass.getModifiers() ) )
+-            {
+-                SurefireTestSet testSet = createTestSet( testClass, classLoader );
+-                
+                 if ( testSet == null )
+                 {
+                     continue;
+@@ -107,7 +80,6 @@
+                 testSets.put( testSet.getName(), testSet );
+ 
+                 totalTests++;
+-            }
+         }
+ 
+         return Collections.unmodifiableMap( testSets );
+@@ -177,47 +149,4 @@
+         return totalTests;
+     }
+ 
+-    private String[] collectTests( File basedir, List includes, List excludes )
+-    {
+-        String[] tests = EMPTY_STRING_ARRAY;
+-        if ( basedir.exists() )
+-        {
+-            DirectoryScanner scanner = new DirectoryScanner();
+-
+-            scanner.setBasedir( basedir );
+-
+-            if ( includes != null )
+-            {
+-                scanner.setIncludes( processIncludesExcludes( includes ) );
+-            }
+-
+-            if ( excludes != null )
+-            {
+-                scanner.setExcludes( processIncludesExcludes( excludes ) );
+-            }
+-
+-            scanner.scan();
+-
+-            tests = scanner.getIncludedFiles();
+-            for ( int i = 0; i < tests.length; i++ )
+-            {
+-                String test = tests[i];
+-                test = test.substring( 0, test.indexOf( "." ) );
+-                tests[i] = test.replace( FS.charAt( 0 ), '.' );
+-            }
+-        }
+-        return tests;
+-    }
+-
+-    private static String[] processIncludesExcludes( List list )
+-    {
+-        String[] incs = new String[list.size()];
+-
+-        for ( int i = 0; i < incs.length; i++ )
+-        {
+-            incs[i] = StringUtils.replace( (String) list.get( i ), "java", "class" );
+-
+-        }
+-        return incs;
+-    }
+ }
+Index: surefire-api/src/main/java/org/apache/maven/surefire/util/SurefireDirectoryScanner.java
+===================================================================
+--- surefire-api/src/main/java/org/apache/maven/surefire/util/SurefireDirectoryScanner.java	(revision 0)
++++ surefire-api/src/main/java/org/apache/maven/surefire/util/SurefireDirectoryScanner.java	(revision 0)
+@@ -0,0 +1,173 @@
++package org.apache.maven.surefire.util;
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++import org.codehaus.plexus.util.StringUtils;
++import org.apache.maven.surefire.testset.TestSetFailedException;
++import org.apache.maven.surefire.testset.SurefireTestSet;
++
++import java.util.*;
++import java.io.File;
++import java.lang.reflect.Modifier;
++
++/**
++ * Scans directories looking for tests.
++ * @author Karl M. Davis
++ * @author Kristian Rosenvold
++ */
++public class SurefireDirectoryScanner {
++
++    private static final String FS = System.getProperty( "file.separator" );
++    private static final String[] EMPTY_STRING_ARRAY = new String[0];
++
++    private final File basedir;
++
++    private final List includes;
++
++    private final List excludes;
++
++    protected Map testSets;
++
++    private int totalTests;
++
++
++    public Map getTestSets() {
++        return testSets;
++    }
++
++    public SurefireDirectoryScanner(File basedir, List includes, List excludes) {
++        this.basedir = basedir;
++        this.includes = includes;
++        this.excludes = excludes;
++    }
++
++    public interface TestSetCreator{
++        SurefireTestSet createTestSet(Class clazz);
++    }
++
++    public Map locateTestSets( ClassLoader classLoader, TestSetCreator testSetCreator )
++        throws TestSetFailedException
++    {
++        if ( testSets != null )
++        {
++            throw new IllegalStateException( "You can't call locateTestSets twice" );
++        }
++        testSets = new HashMap();
++
++        Class[] locatedClasses = locateTestClasses( classLoader);
++
++        for ( int i = 0; i < locatedClasses.length; i++ )
++        {
++            Class testClass = locatedClasses[i];
++            SurefireTestSet testSet = testSetCreator.createTestSet( testClass);
++
++                if ( testSet == null )
++                {
++                    continue;
++                }
++
++                if ( testSets.containsKey( testSet.getName() ) )
++                {
++                    throw new TestSetFailedException( "Duplicate test set '" + testSet.getName() + "'" );
++                }
++                testSets.put( testSet.getName(), testSet );
++
++                totalTests++;
++        }
++
++        return Collections.unmodifiableMap( testSets );
++    }
++
++    public Class[] locateTestClasses( ClassLoader classLoader)
++        throws TestSetFailedException
++    {
++        String[] testClassNames =   collectTests( );
++        List result = new ArrayList();
++
++        for ( int i = 0; i < testClassNames.length; i++ )
++        {
++            String className = testClassNames[i];
++
++            Class testClass;
++            try
++            {
++                testClass = classLoader.loadClass( className );
++            }
++            catch ( ClassNotFoundException e )
++            {
++                throw new TestSetFailedException( "Unable to create test class '" + className + "'", e );
++            }
++
++            if ( !Modifier.isAbstract( testClass.getModifiers() ) )
++            {
++
++                result.add( testClass);
++            }
++        }
++        return (Class[]) result.toArray(new Class[result.size()]);
++    }
++
++
++    String[] collectTests( )
++    {
++        String[] tests = EMPTY_STRING_ARRAY;
++        if ( basedir.exists() )
++        {
++            org.codehaus.plexus.util.DirectoryScanner scanner = new org.codehaus.plexus.util.DirectoryScanner();
++
++            scanner.setBasedir( basedir );
++
++            if ( includes != null )
++            {
++                scanner.setIncludes( processIncludesExcludes( includes ) );
++            }
++
++            if ( excludes != null )
++            {
++                scanner.setExcludes( processIncludesExcludes( excludes ) );
++            }
++
++            scanner.scan();
++
++            tests = scanner.getIncludedFiles();
++            for ( int i = 0; i < tests.length; i++ )
++            {
++                String test = tests[i];
++                test = test.substring( 0, test.indexOf( "." ) );
++                tests[i] = test.replace( FS.charAt( 0 ), '.' );
++            }
++        }
++        return tests;
++    }
++
++    private static String[] processIncludesExcludes( List list )
++    {
++        String[] incs = new String[list.size()];
++
++        for ( int i = 0; i < incs.length; i++ )
++        {
++            incs[i] = StringUtils.replace( (String) list.get( i ), "java", "class" );
++
++        }
++        return incs;
++    }
++
++
++
++}
+
+Property changes on: surefire-api/src/main/java/org/apache/maven/surefire/util/SurefireDirectoryScanner.java
+___________________________________________________________________
+Added: svn:executable
+   + *
+

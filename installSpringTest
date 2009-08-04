@@ -1,1 +1,0 @@
- mvn install:install-file -DgroupId=org.springframework -DartifactId=spring-test -Dversion=3.0.0.BUILD1447 -DgeneratePom=true -Dpackaging=jar -Dfile=trunk/org.springframework.test/target/artifacts/org.springframework.test.jar
