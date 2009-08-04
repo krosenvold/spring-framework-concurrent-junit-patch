@@ -1,0 +1,302 @@
+From b911549ee8e290e8c93cf6a65e65e95a3d617f30 Mon Sep 17 00:00:00 2001
+From: Kristian Rosenvold <kristian@rosenvold.com>
+Date: Tue, 4 Aug 2009 09:38:05 +0200
+Subject: [PATCH] Added 2 concurrency patches
+
+---
+ src/main/java/org/junit/runner/Result.java         |   22 +++---
+ .../org/junit/runner/notification/RunNotifier.java |   31 +++++---
+ .../notification/RunNotifierConcurrencyTest.java   |   69 ++++++++++++++++++
+ .../results/ResultConcurrencyTest.java             |   74 ++++++++++++++++++++
+ 4 files changed, 175 insertions(+), 21 deletions(-)
+ create mode 100644 src/test/java/org/junit/runner/notification/RunNotifierConcurrencyTest.java
+ create mode 100644 src/test/java/org/junit/tests/experimental/results/ResultConcurrencyTest.java
+
+diff --git a/src/main/java/org/junit/runner/Result.java b/src/main/java/org/junit/runner/Result.java
+index 8a723db..7102f58 100644
+--- a/src/main/java/org/junit/runner/Result.java
++++ b/src/main/java/org/junit/runner/Result.java
+@@ -2,6 +2,8 @@ package org.junit.runner;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Collections;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ import org.junit.runner.notification.Failure;
+ import org.junit.runner.notification.RunListener;
+@@ -12,17 +14,17 @@ import org.junit.runner.notification.RunListener;
+  * the count of tests that ran.
+  */
+ public class Result {
+-	private int fCount= 0;
+-	private int fIgnoreCount= 0;
+-	private final List<Failure> fFailures= new ArrayList<Failure>();
+-	private long fRunTime= 0;
+-	private long fStartTime;
++	private AtomicInteger fCount = new AtomicInteger();
++	private AtomicInteger fIgnoreCount= new AtomicInteger();
++	private final List<Failure> fFailures= Collections.synchronizedList( new ArrayList<Failure>());
++	private volatile long fRunTime= 0;
++	private volatile long fStartTime;
+ 
+ 	/**
+ 	 * @return the number of tests run
+ 	 */
+ 	public int getRunCount() {
+-		return fCount;
++		return fCount.get();
+ 	}
+ 
+ 	/**
+@@ -50,7 +52,7 @@ public class Result {
+ 	 * @return the number of tests ignored during the run
+ 	 */
+ 	public int getIgnoreCount() {
+-		return fIgnoreCount;
++		return fIgnoreCount.get();
+ 	}
+ 
+ 	/**
+@@ -74,7 +76,7 @@ public class Result {
+ 
+ 		@Override
+ 		public void testFinished(Description description) throws Exception {
+-			fCount++;
++			fCount.getAndIncrement();
+ 		}
+ 
+ 		@Override
+@@ -84,9 +86,9 @@ public class Result {
+ 
+ 		@Override
+ 		public void testIgnored(Description description) throws Exception {
+-			fIgnoreCount++;
++			fIgnoreCount.getAndIncrement();
+ 		}
+-		
++
+ 		@Override
+ 		public void testAssumptionFailure(Failure failure) {
+ 			// do nothing: same as passing (for 4.5; may change in 4.6)
+diff --git a/src/main/java/org/junit/runner/notification/RunNotifier.java b/src/main/java/org/junit/runner/notification/RunNotifier.java
+index 9164634..ea0132a 100644
+--- a/src/main/java/org/junit/runner/notification/RunNotifier.java
++++ b/src/main/java/org/junit/runner/notification/RunNotifier.java
+@@ -16,30 +16,37 @@ import org.junit.runner.Result;
+  * to a separate class since they should only be called once per run.
+  */
+ public class RunNotifier {
++    private final Object fListenersLock = new Object();
+ 	private final List<RunListener> fListeners= new ArrayList<RunListener>();
+ 	private boolean fPleaseStop= false;
+ 	
+ 	/** Internal use only
+ 	 */
+ 	public void addListener(RunListener listener) {
+-		fListeners.add(listener);
++        synchronized ( fListenersLock) {
++		  fListeners.add(listener);
++        }
+ 	}
+ 
+ 	/** Internal use only
+ 	 */
+ 	public void removeListener(RunListener listener) {
+-		fListeners.remove(listener);
+-	}
++        synchronized ( fListenersLock) {
++            fListeners.remove(listener);
++       }
++    }
+ 
+ 	private abstract class SafeNotifier {
+ 		void run() {
+-			for (Iterator<RunListener> all= fListeners.iterator(); all.hasNext();)
+-				try {
+-					notifyListener(all.next());
+-				} catch (Exception e) {
+-					all.remove(); // Remove the offending listener first to avoid an infinite loop
+-					fireTestFailure(new Failure(Description.TEST_MECHANISM, e));
+-				}
++            synchronized ( fListenersLock) {
++                for (Iterator<RunListener> all= fListeners.iterator(); all.hasNext();)
++                    try {
++                        notifyListener(all.next());
++                    } catch (Exception e) {
++                        all.remove(); // Remove the offending listener first to avoid an infinite loop
++                        fireTestFailure(new Failure(Description.TEST_MECHANISM, e));
++                    }
++                }
+ 		}
+ 		
+ 		abstract protected void notifyListener(RunListener each) throws Exception;
+@@ -157,6 +164,8 @@ public class RunNotifier {
+ 	 * Internal use only. The Result's listener must be first.
+ 	 */
+ 	public void addFirstListener(RunListener listener) {
+-		fListeners.add(0, listener);
++        synchronized ( fListenersLock) {
++		    fListeners.add(0, listener);
++        }
+ 	}
+ }
+\ No newline at end of file
+diff --git a/src/test/java/org/junit/runner/notification/RunNotifierConcurrencyTest.java b/src/test/java/org/junit/runner/notification/RunNotifierConcurrencyTest.java
+new file mode 100644
+index 0000000..60ddfde
+--- /dev/null
++++ b/src/test/java/org/junit/runner/notification/RunNotifierConcurrencyTest.java
+@@ -0,0 +1,69 @@
++/*
++ * Licensed under CPL1.0  http://www.opensource.org/licenses/cpl1.0.php
++ */
++package org.junit.runner.notification;
++
++import org.junit.Test;
++import org.junit.runner.Description;
++
++import java.util.concurrent.*;
++import java.util.List;
++import java.util.ArrayList;
++
++/**
++ * @author kristian rosenvold
++ */
++public class RunNotifierConcurrencyTest {
++    @Test
++    public void testRemoveListener() throws InterruptedException, ExecutionException {
++        final int NUMTASKS = 100;
++
++        final RunNotifier runNotifier = new RunNotifier();
++        final RunListener listener1 = new RunListener();
++        final RunListener listener2 = new RunListener();
++        final RunListener listener3 = new RunListener();
++        final Description description = Description.createSuiteDescription(this.getClass());
++        runNotifier.addListener(listener1);
++        runNotifier.addListener(listener2);
++        runNotifier.addListener(listener3);
++
++        class Notifier implements Callable<Object> {
++            public Object call() throws Exception {
++                runNotifier.fireTestRunStarted(description);
++                return "";
++            }
++
++        }
++        class Modifier implements Callable<Object> {
++            public Object call() throws Exception {
++                runNotifier.removeListener(listener2);
++                runNotifier.addListener(listener2);
++                return "";
++            }
++        }
++
++
++        ExecutorService executorService = Executors.newFixedThreadPool(100);
++        try {
++            List<Callable<Object>> runnables = new ArrayList<Callable<Object>>();
++            for (int i = 0; i < NUMTASKS; i++) {
++                runnables.add(new Notifier());
++                runnables.add(new Modifier());
++            }
++            List<Future<Object>> futures = executorService.invokeAll(runnables);
++
++            for (Future<Object> objectFuture : futures){
++                objectFuture.get();
++            }
++        } finally {
++            executorService.shutdown();
++        }
++
++
++    }
++
++    @Test
++    public void testFireTestRunStarted() {
++        // Add your code here
++    }
++}
+diff --git a/src/test/java/org/junit/tests/experimental/results/ResultConcurrencyTest.java b/src/test/java/org/junit/tests/experimental/results/ResultConcurrencyTest.java
+new file mode 100644
+index 0000000..7971245
+--- /dev/null
++++ b/src/test/java/org/junit/tests/experimental/results/ResultConcurrencyTest.java
+@@ -0,0 +1,74 @@
++package org.junit.tests.experimental.results;
++
++import static org.junit.Assert.assertEquals;
++import org.junit.runner.Result;
++import org.junit.runner.notification.Failure;
++import org.junit.runner.Description;
++import org.junit.runner.notification.RunListener;
++import org.junit.Test;
++
++import java.util.concurrent.*;
++import java.util.List;
++import java.util.ArrayList;
++
++/**
++ * @author kristian rosenvold
++ *  Tests concurrency of the result object.
++ */
++public class ResultConcurrencyTest {
++    @SuppressWarnings({"ForLoopReplaceableByForEach"})
++    @Test
++    public void testConcurrentResultCreation() throws ExecutionException, InterruptedException {
++        int NUMTESTS = 100;
++        Result result = new Result();
++        final RunListener listener = result.createListener();
++        class OkCallable implements Callable<Object> {
++            public Object call() throws Exception {
++                Description description = Description.createTestDescription(ResultConcurrencyTest.class, "dummy");
++                listener.testStarted(description);
++                return "";
++            }
++        }
++        class FinishedCallable implements Callable<Object> {
++            public Object call() throws Exception {
++                Description description = Description.createTestDescription(ResultConcurrencyTest.class, "dummy");
++                listener.testFinished(description);
++                return "";
++            }
++        }
++
++        class FailedCallable implements Callable<Object> {
++            public Object call() throws Exception {
++                Description description = Description.createTestDescription(ResultConcurrencyTest.class, "dummy");
++                listener.testFailure(new Failure(description, null));
++                return "";
++            }
++        }
++
++        List<Future> callables = new ArrayList<Future>();
++        ExecutorService executorService = Executors.newFixedThreadPool(NUMTESTS);
++        try {
++            for (int i = 0; i < NUMTESTS; i++){
++                Callable<Object> temp = new OkCallable();
++                callables.add(executorService.submit( temp));
++                temp = new FinishedCallable();
++                callables.add(executorService.submit( temp));
++                temp = new FailedCallable();
++                callables.add(executorService.submit( temp));
++            }
++
++
++             for (int i = 0; i < callables.size(); i++){
++                     callables.get(i).get();
++             }
++        } finally {
++            executorService.shutdown();
++        }
++
++        assertEquals(NUMTESTS, result.getRunCount());
++        assertEquals(NUMTESTS, result.getFailureCount());
++
++
++    }
++
++}
+-- 
+1.6.3.1
+
