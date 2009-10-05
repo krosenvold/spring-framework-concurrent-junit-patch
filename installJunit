@@ -1,2 +1,2 @@
-mvn install:install-file -DgroupId=junit -DartifactId=junit -Dversion=4.7-SNAPSHOT -DgeneratePom=true -Dpackaging=jar -Dfile=../junit/junit4.7-SNAPSHOT-20090601-1258/junit-4.7-SNAPSHOT-20090601-1258.jar
-mvn install:install-file -DgroupId=junit -DartifactId=junit -Dversion=4.7-SNAPSHOT -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=../junit/junit4.7-SNAPSHOT-20090601-1258/junit-4.7-SNAPSHOT-20090601-1258-src.jar
+mvn install:install-file -DgroupId=junit -DartifactId=junit -Dversion=4.7-CONCURRENT -DgeneratePom=true -Dpackaging=jar -Dfile=../junit/junit4.7/junit-4.7.jar
+mvn install:install-file -DgroupId=junit -DartifactId=junit -Dversion=4.7-CONCURRENT -DgeneratePom=true -Dpackaging=jar -Dclassifier=sources -Dfile=../junit/junit4.7/junit-4.7-src.jar
