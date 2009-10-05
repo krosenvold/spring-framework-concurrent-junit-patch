@@ -1,0 +1,813 @@
+diff --git a/pom.xml b/pom.xml
+index 2d2f0f4..62afb85 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -201,12 +201,6 @@
+         <exclude>**/*.java</exclude>
+       </excludes>
+      </resource>
+-       <resource>
+-      <directory>src/main/java</directory>
+-      <excludes>
+-        <exclude>**/*.java</exclude>
+-      </excludes>
+-    </resource>
+ 
+     <resource>
+       <directory>src/test/resources</directory>
+diff --git a/src/test/java/org/springframework/test/context/ContextCleaner.java b/src/test/java/org/springframework/test/context/ContextCleaner.java
+new file mode 100644
+index 0000000..b3aa549
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/ContextCleaner.java
+@@ -0,0 +1,29 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context;
++
++/**
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ */
++public class ContextCleaner {
++        public static void clearTestContext(){
++            ContextCache cache = TestContextManager.contextCache;
++            cache.clear();
++
++        }
++
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/JunitTestClassInvoker.java b/src/test/java/org/springframework/test/context/concurrency/JunitTestClassInvoker.java
+new file mode 100644
+index 0000000..3d226b9
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/JunitTestClassInvoker.java
+@@ -0,0 +1,71 @@
++
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.springframework.test.context.concurrency;
++
++import org.junit.runner.notification.RunNotifier;
++import org.junit.runners.model.InitializationError;
++import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
++import org.springframework.test.context.TestContextManager;
++
++import java.util.concurrent.Executors;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Callable;
++import java.util.concurrent.Future;
++import java.util.Collection;
++import java.util.List;
++
++/**
++ * Encapsulates the threaded running of tests from here.
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ */
++public class JunitTestClassInvoker implements Callable<RunNotifier> {
++    private final Class classTorun;
++    private final RunNotifier runNotifier;
++
++    public JunitTestClassInvoker(Class classtoRun, RunNotifier runNotifier){
++        this.classTorun = classtoRun;
++        this.runNotifier = runNotifier;
++    }
++
++    public RunNotifier call() throws Exception {
++        MyClassRunner myClassRunner = new MyClassRunner(classTorun);
++        myClassRunner.run(runNotifier);
++        return runNotifier;
++    }
++
++    public static  List<Future<RunNotifier>> runAll(Collection<Callable<RunNotifier>> invokerEnumerable){
++        final ExecutorService executorService = Executors.newCachedThreadPool();
++        try {
++            return executorService.invokeAll(invokerEnumerable);
++        } catch (InterruptedException e) {
++            throw new RuntimeException(e);
++        } finally {
++            executorService.shutdown();
++        }
++    }
++
++    class MyClassRunner extends SpringJUnit4ClassRunner {
++        MyClassRunner(Class<?> aClass) throws InitializationError {
++            super(aClass);
++        }
++
++        public TestContextManager getTestContextManager4Test(){
++
++            return super.getTestContextManager();
++        }
++    }
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/MockContextLoader.java b/src/test/java/org/springframework/test/context/concurrency/MockContextLoader.java
+new file mode 100644
+index 0000000..bffdd7e
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/MockContextLoader.java
+@@ -0,0 +1,158 @@
++
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.springframework.test.context.concurrency;
++
++import org.springframework.test.context.support.GenericXmlContextLoader;
++import org.springframework.test.context.ContextCacheKey;
++import org.springframework.context.support.GenericApplicationContext;
++import org.springframework.context.i18n.LocaleContextHolder;
++import org.springframework.context.ApplicationContext;
++import org.springframework.web.context.request.RequestContextHolder;
++import org.springframework.web.context.request.ServletRequestAttributes;
++import org.springframework.web.context.request.RequestContextListener;
++import org.springframework.web.context.request.RequestAttributes;
++import org.springframework.web.context.request.SessionScope;
++import org.springframework.web.context.request.RequestScope;
++import org.springframework.mock.web.MockHttpServletRequest;
++
++import javax.servlet.http.HttpServletRequest;
++import java.util.Map;
++import java.util.HashMap;
++import java.util.Locale;
++
++/**
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ */
++public class MockContextLoader extends GenericXmlContextLoader {
++
++
++    private static final Map<ContextCacheKey, LocalAttrs> attrCache = new HashMap<ContextCacheKey, LocalAttrs>();
++
++
++    /**
++      * Activates a scope="session" in the beanfactory allowing us to register and retrieve session-scoped
++      * beans in the context. Spring 2.5
++      *
++      * @param context the parent scope
++      */
++     protected void customizeContext(GenericApplicationContext context) {
++         configureSessionInfrastructure();
++         SessionScope testSessionScope = new SessionScope();
++         context.getBeanFactory().registerScope("session", testSessionScope);
++         RequestScope requestScope = new RequestScope();
++         context.getBeanFactory().registerScope("request", requestScope);
++
++     }
++
++    /**
++     * Activates a scope="session" in the beanfactory allowing us to register and retrieve session-scoped
++     * beans in the context. Spring 3.0 adapted
++     *
++     * @param context The application context
++     * @param cacheKey the parent scope
++     */
++    protected void customizeContext(GenericApplicationContext context, ContextCacheKey cacheKey) {
++        customizeContext( context);
++
++        final LocalAttrs value = new LocalAttrs(RequestContextHolder.getRequestAttributes(), LocaleContextHolder.getLocale());
++        synchronized ( attrCache){
++           attrCache.put( cacheKey, value);
++        }
++
++
++    }
++
++
++
++    @SuppressWarnings({"UnusedDeclaration"})
++    public void activateForThread(ApplicationContext applicationContext, ContextCacheKey key) {
++        synchronized (attrCache){
++        LocalAttrs localAttrs = attrCache.get( key);
++        // We are in a later thread/invocation. Need to set up spring context for this thread.
++        if (localAttrs == null) {
++            System.out.println("You cannot call this method before getApplicationContext, faking it ?");
++            return;
++        }
++        LocaleContextHolder.setLocale(localAttrs.getLocale(), true);
++        RequestContextHolder.setRequestAttributes(localAttrs.getCopyOfRequestAttributes(), true);
++        }
++
++    }
++
++    /**
++     * Configures the necessary session-infrastructure needed to provide SessionScope.
++     */
++    private void configureSessionInfrastructure() {
++        initRequest();
++    }
++
++    private static void initRequest() {
++        final MockHttpServletRequest request = new MockHttpServletRequest();
++        ServletRequestAttributes attributes = new ServletRequestAttributes(request);
++        request.setAttribute(REQUEST_ATTRIBUTES_ATTRIBUTE, attributes);
++        LocaleContextHolder.setLocale(request.getLocale(), true);
++        RequestContextHolder.setRequestAttributes(attributes, true);
++
++    }
++
++
++    public static void requestCompleted() {
++        @SuppressWarnings({"UnusedDeclaration"}) ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
++        //requestAttributes.requestCompleted();
++        initRequest();
++    }
++
++    private static final String REQUEST_ATTRIBUTES_ATTRIBUTE =
++            RequestContextListener.class.getName() + ".REQUEST_ATTRIBUTES";
++
++    class LocalAttrs{
++        private RequestAttributes requestAttributes;
++        private Locale locale;
++
++        LocalAttrs(RequestAttributes requestAttributes, Locale locale) {
++            this.requestAttributes = requestAttributes;
++            this.locale = locale;
++        }
++
++        public RequestAttributes getCopyOfRequestAttributes(){
++            if (requestAttributes instanceof ServletRequestAttributes){
++                ServletRequestAttributes original = (ServletRequestAttributes)requestAttributes;
++                ServletRequestAttributes result;
++                HttpServletRequest nextRequest;
++                if (original.getRequest() instanceof MockHttpServletRequest)  {
++                   // Mock request, just clone it.
++                   nextRequest =  new MockHttpServletRequest();  // Maybe need to clone.
++                } else {
++                   nextRequest = original.getRequest();
++                }
++
++                result = new ServletRequestAttributes( nextRequest);
++
++                nextRequest.setAttribute(REQUEST_ATTRIBUTES_ATTRIBUTE, original.getRequest().getAttribute(REQUEST_ATTRIBUTES_ATTRIBUTE));
++
++                return result;
++            }
++            return requestAttributes; // Maybe
++        }
++
++        public Locale getLocale() {
++            return locale;
++        }
++    }
++
++
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.java b/src/test/java/org/springframework/test/context/concurrency/SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.java
+new file mode 100644
+index 0000000..4624ed8
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.java
+@@ -0,0 +1,100 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency;
++
++import org.junit.runner.RunWith;
++import org.junit.Test;
++import static org.junit.Assert.*;
++
++import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
++import org.springframework.test.context.concurrency.model.Client;
++import org.springframework.test.context.concurrency.model.SubBean;
++import org.springframework.test.context.ContextConfiguration;
++import org.springframework.beans.factory.annotation.Autowired;
++import junit.framework.Assert;
++
++import java.util.concurrent.atomic.AtomicInteger;
++
++/**
++ * This test is run as part of the regular test battery. As such it only verifies a number of assumptions that should hold ture.
++ * The  test #TestContextManagerConcurrencyRunnerTest runs this test a number of times in parallel.
++ *
++ * If the parallel test fails, you should always check this test first.  
++ *
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ */
++
++@RunWith(SpringJUnit4ClassRunner.class)
++@ContextConfiguration(locations = {
++     "classpath:org/springframework/test/context/concurrency/model/applicationContext-concurrency-simple.xml"
++}, loader=MockContextLoader.class)
++public class SpringJUnit4ClassRunnerEnvironmentAssumptionsTests {
++    @Autowired
++    Client client;
++    @Autowired
++    SubBean subBean1;
++
++    AtomicInteger runCount = new AtomicInteger();
++
++    private String threadInfo;
++
++    public SpringJUnit4ClassRunnerEnvironmentAssumptionsTests() {
++        threadInfo = getThreadInfo();
++    }
++
++    private String getThreadInfo() {
++        return this.toString() + "Thread" + Thread.currentThread().toString();
++    }
++
++    @Test
++    public void testThatWeReNotRunningInTheSameInstance(){
++         assertEquals(1, runCount.incrementAndGet());
++    }
++
++	@Test
++	public
++	void testThatWeAreCreatedOnTheSameThreadAsWeRun(){
++      assertEquals( getThreadInfo(), this.threadInfo);
++	}
++
++    @Test
++    public void testThatScopeProxiedInstancesAreServedByDifferentInstances(){
++        assertFalse("Expect different instance for differnet bean", client.getSessionStorage().id().equals(client.getSessionStorageLazy().id()));
++        assertEquals("Expect same instance for alias", client.getSessionStorage().id(), client.getSessionStorageAlias().id());
++    }
++
++
++    @Test
++    public void testSubBean1() {
++        Assert.assertNotNull( subBean1.getService());
++        Assert.assertEquals( SubBean.class, subBean1.getClass());
++    }
++
++    @Test
++    public void testClient1() {
++        Assert.assertNotNull( "Object is supposed to be autowired (1) !!!", client);
++        Assert.assertNotNull( "Object is supposed to be autowired (2) !!!", client.getSessionStorage());
++        Assert.assertNotNull("Object is supposed to be autowired (3) !!!",  client.getSessionStorageAlias());
++        Assert.assertNotNull( "Object is supposed to be autowired (4) !!!", client.getSessionStorageLazy());
++        Assert.assertNotNull( "Object is supposed to be autowired (5) !!!", client.getRequestStorage());
++        Assert.assertNotNull( "Object is supposed to be autowired (6) !!!", subBean1);
++        Assert.assertNotNull( "Object is supposed to be autowired (7) !!!", subBean1.getService());
++        Assert.assertEquals( "Object is supposed to be autowired (8) !!!", SubBean.class, subBean1.getClass());
++    }
++
++
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java b/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java
+new file mode 100644
+index 0000000..962f6f7
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java
+@@ -0,0 +1,128 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency;
++
++import org.junit.Test;
++import static org.junit.Assert.assertNotNull;
++import static org.junit.Assert.assertEquals;
++import org.junit.runner.notification.RunNotifier;
++import org.junit.runner.notification.RunListener;
++import org.junit.runner.notification.Failure;
++import org.junit.runner.Description;
++import org.springframework.test.context.TestContextManager;
++import org.springframework.test.context.ContextCleaner;
++
++import java.util.concurrent.*;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.List;
++import java.util.ArrayList;
++
++/**
++ * Tests concurrency of the TestContextManager
++ *
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ */
++
++public class TestContextManagerConcurrencyRunnerTests {
++    // This instance is shared by several threads in code (used from SpringJUnit4ClassRunner)
++    final TestContextManager testContextManager = new TestContextManager(SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.class);
++    final CountDownLatch startGate = new CountDownLatch(1);
++
++
++    @Test
++    public void testConcurrentPrepareTestInstance() throws Exception {
++        List<Future<SpringJUnit4ClassRunnerEnvironmentAssumptionsTests>> futures = new ArrayList<Future<SpringJUnit4ClassRunnerEnvironmentAssumptionsTests>>();
++        ExecutorService executorService = Executors.newCachedThreadPool();
++        for (int i = 0; i < 100; i++) {
++            futures.add(executorService.submit(new MySpringBeanBuilder()));
++        }
++
++        ContextCleaner.clearTestContext();
++        startGate.countDown();
++        for (Future<SpringJUnit4ClassRunnerEnvironmentAssumptionsTests> future : futures) {
++            future.get().testClient1();
++        }
++    }
++
++    class MySpringBeanBuilder implements Callable<SpringJUnit4ClassRunnerEnvironmentAssumptionsTests> {
++        public SpringJUnit4ClassRunnerEnvironmentAssumptionsTests call() throws Exception {
++            SpringJUnit4ClassRunnerEnvironmentAssumptionsTests instance = new SpringJUnit4ClassRunnerEnvironmentAssumptionsTests();
++            startGate.await(); // let's all really start at the same time here.
++            testContextManager.prepareTestInstance(instance);
++            return instance;
++        }
++    }
++
++
++    @Test
++    public void testRunCounts() throws Exception {
++        final int NUMTESTS = 100;
++        List<Callable<RunNotifier>> classes = new ArrayList<Callable<RunNotifier>>();
++
++        ContextCleaner.clearTestContext();
++
++        RunNotifier runNotifier = new RunNotifier();
++        CountingRunListener listener = new CountingRunListener();
++        runNotifier.addListener(listener);
++        for (int i = 0; i < NUMTESTS; i++) {
++            classes.add(new JunitTestClassInvoker(SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.class, runNotifier));
++        }
++        List<Future<RunNotifier>> futures = JunitTestClassInvoker.runAll(classes);
++
++        for (Future<RunNotifier> future : futures) {
++            assertNotNull(future.get());
++        }
++
++        assertEquals("No tests should fail, right ?", 0, listener.getFailures());
++        assertEquals("All tests should succeed, right ?", NUMTESTS * 5, listener.getSuccess());
++    }
++
++    class CountingRunListener extends RunListener {
++        AtomicInteger failures = new AtomicInteger();
++        AtomicInteger success = new AtomicInteger();
++        AtomicInteger assumptionFailures = new AtomicInteger();
++
++        @Override
++        public void testFailure(Failure failure) throws Exception {
++            failures.incrementAndGet();
++            System.out.println("failure.getMessage() = " + failure.getMessage());
++        }
++
++
++        @Override
++        public void testFinished(Description description) throws Exception {
++            success.incrementAndGet();
++        }
++
++        @Override
++        public void testAssumptionFailure(Failure failure) {
++            assumptionFailures.incrementAndGet();
++        }
++
++        public int getFailures() {
++            return failures.intValue();
++        }
++
++        public int getSuccess() {
++            return success.intValue();
++        }
++
++        public int getAssumptionFailures() {
++            return assumptionFailures.intValue();
++        }
++    }
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/BaseBean.java b/src/test/java/org/springframework/test/context/concurrency/model/BaseBean.java
+new file mode 100644
+index 0000000..6a22e90
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/BaseBean.java
+@@ -0,0 +1,37 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency.model;
++
++import org.springframework.stereotype.Component;
++import org.springframework.beans.factory.annotation.Autowired;
++
++/**
++ * @author <a href="mailto:kristian@zenior*dot*no">Kristian Rosenvold</a>
++ */
++@Component
++public abstract class BaseBean<T>  {
++    private T service;
++
++    public T getService() {
++        return service;
++    }
++
++    @Autowired
++    public void setService(T service) {
++        this.service = service;
++    }
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/Client.java b/src/test/java/org/springframework/test/context/concurrency/model/Client.java
+new file mode 100644
+index 0000000..148cc7e
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/Client.java
+@@ -0,0 +1,58 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency.model;
++
++import org.springframework.stereotype.Service;
++import org.springframework.beans.factory.annotation.Autowired;
++
++import javax.annotation.Resource;
++
++
++/**
++ * @author <a href="mailto:kristian@zenior*dot*no">Kristian Rosenvold</a>
++ */
++@Service
++public class Client {
++
++    @Resource(name="default")
++	private SessionStorage sessionStorage;
++
++    @Resource(name="default")
++	private SessionStorage sessionStorageAlias;
++
++    @Resource(name="lazyStorage1")
++    private SessionStorage sessionStorageLazy;
++    
++    @Autowired
++	private RequestStorage service2;
++
++    public SessionStorage getSessionStorage() {
++        return sessionStorage;
++    }
++
++    public SessionStorage getSessionStorageLazy() {
++        return sessionStorageLazy;
++    }
++
++    public SessionStorage getSessionStorageAlias() {
++        return sessionStorageAlias;
++    }
++
++    public RequestStorage getRequestStorage() {
++        return service2;
++    }
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/Id.java b/src/test/java/org/springframework/test/context/concurrency/model/Id.java
+new file mode 100644
+index 0000000..7c07112
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/Id.java
+@@ -0,0 +1,8 @@
++package org.springframework.test.context.concurrency.model;
++
++/**
++ * @author <a href="mailto:kristian@zenior.no">Kristian Rosenvold</a>
++ */
++public interface Id {
++    String id();
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/RequestStorage.java b/src/test/java/org/springframework/test/context/concurrency/model/RequestStorage.java
+new file mode 100644
+index 0000000..37aad92
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/RequestStorage.java
+@@ -0,0 +1,7 @@
++package org.springframework.test.context.concurrency.model;
++
++/**
++ * @author <a href="mailto:kristian@zenior.no">Kristian Rosenvold</a>
++ */
++public interface RequestStorage extends Id {
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/SessionStorage.java b/src/test/java/org/springframework/test/context/concurrency/model/SessionStorage.java
+new file mode 100644
+index 0000000..cb88c3a
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/SessionStorage.java
+@@ -0,0 +1,7 @@
++package org.springframework.test.context.concurrency.model;
++
++/**
++ * @author <a href="mailto:kristian@zenior.no">Kristian Rosenvold</a>
++ */
++public interface SessionStorage extends Id {
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/Storage1Impl.java b/src/test/java/org/springframework/test/context/concurrency/model/Storage1Impl.java
+new file mode 100644
+index 0000000..2ed3a9d
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/Storage1Impl.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency.model;
++
++/**
++ * @author <a href="mailto:kristian@zenior*dot*no">Kristian Rosenvold</a>
++ */
++public class Storage1Impl implements SessionStorage {
++    public String id() {
++        return this.toString();
++    }
++}
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/Storage2Impl.java b/src/test/java/org/springframework/test/context/concurrency/model/Storage2Impl.java
+new file mode 100644
+index 0000000..23acf29
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/Storage2Impl.java
+@@ -0,0 +1,27 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency.model;
++
++/**
++ * @author <a href="mailto:kristian@zenior*dot*no">Kristian Rosenvold</a>
++ */
++public class Storage2Impl implements RequestStorage {
++    public String id(){
++        return this.toString();
++    }
++
++}
+\ No newline at end of file
+diff --git a/src/test/java/org/springframework/test/context/concurrency/model/SubBean.java b/src/test/java/org/springframework/test/context/concurrency/model/SubBean.java
+new file mode 100644
+index 0000000..fd6f79a
+--- /dev/null
++++ b/src/test/java/org/springframework/test/context/concurrency/model/SubBean.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context.concurrency.model;
++
++import org.springframework.stereotype.Component;
++
++/**
++ * @author <a href="mailto:kristian@zenior*dot*no">Kristian Rosenvold</a>
++ */
++@Component
++public class SubBean extends BaseBean<RequestStorage> {
++}
+diff --git a/src/test/resources/org/springframework/test/context/concurrency/model/applicationContext-concurrency-simple.xml b/src/test/resources/org/springframework/test/context/concurrency/model/applicationContext-concurrency-simple.xml
+new file mode 100644
+index 0000000..7153636
+--- /dev/null
++++ b/src/test/resources/org/springframework/test/context/concurrency/model/applicationContext-concurrency-simple.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="UTF-8"?>
++    <beans xmlns="http://www.springframework.org/schema/beans"
++           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++           xmlns:context="http://www.springframework.org/schema/context"
++           xmlns:p="http://www.springframework.org/schema/p"
++           xmlns:util="http://www.springframework.org/schema/util"
++           xmlns:aop="http://www.springframework.org/schema/aop"
++           xsi:schemaLocation="http://www.springframework.org/schema/beans
++           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
++           http://www.springframework.org/schema/context
++           http://www.springframework.org/schema/context/spring-context-2.5.xsd
++           http://www.springframework.org/schema/util
++           http://www.springframework.org/schema/util/spring-util-2.5.xsd
++           http://www.springframework.org/schema/aop
++           http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
++
++    <context:component-scan base-package="org.springframework.test.context.concurrency.model"/>
++
++    <bean name="default" class="org.springframework.test.context.concurrency.model.Storage1Impl" scope="session">
++        <aop:scoped-proxy proxy-target-class="false"/>
++    </bean>
++    <bean name="lazyStorage1" lazy-init="true" class="org.springframework.test.context.concurrency.model.Storage1Impl" scope="session" >
++        <aop:scoped-proxy proxy-target-class="false"/>
++    </bean>
++
++    <bean class="org.springframework.test.context.concurrency.model.Storage2Impl" scope="request">
++        <aop:scoped-proxy proxy-target-class="false"/>
++    </bean>
++</beans>

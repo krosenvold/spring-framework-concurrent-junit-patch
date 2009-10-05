@@ -1,0 +1,754 @@
+diff --git a/src/main/java/org/springframework/test/context/TestClassContext.java b/src/main/java/org/springframework/test/context/TestClassContext.java
+index d41eb71..1e11b6a 100644
+--- a/src/main/java/org/springframework/test/context/TestClassContext.java
++++ b/src/main/java/org/springframework/test/context/TestClassContext.java
+@@ -20,11 +20,15 @@ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
++import java.util.concurrent.locks.ReadWriteLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.Lock;
+ 
+ 
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.springframework.beans.BeanUtils;
++import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+ import org.springframework.context.ApplicationContext;
+ import org.springframework.core.AttributeAccessorSupport;
+ import org.springframework.core.annotation.AnnotationUtils;
+@@ -36,7 +40,7 @@ import org.springframework.util.StringUtils;
+ /**
+  * TestClassContext encapsulates the class-invariant context in which a test is executed, agnostic of
+  * the actual testing framework in use.
+- * 
++ *
+  * @author Sam Brannen
+  * @author Juergen Hoeller
+  * @author Kristian Rosenvold
+@@ -44,298 +48,328 @@ import org.springframework.util.StringUtils;
+  */
+ public class TestClassContext extends AttributeAccessorSupport {
+ 
+-	private static final long serialVersionUID = -8827157174866681247L;
+-
+-	private static final String STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME = "org.springframework.test.context.support.GenericXmlContextLoader";
+-
+-	private static final Log logger = LogFactory.getLog(TestClassContext.class);
+-
+-	private final ContextCache contextCache;
+-
+-	private final ContextLoader contextLoader;
+-
+-	private final String[] locations;
+-
+-	private final Class<?> testClass;
+-
+-
+-
+-	/**
+-	 * Construct a new test context for the supplied {@link Class test class}
+-	 * and {@link ContextCache context cache} and parse the corresponding
+-	 * {@link ContextConfiguration &#064;ContextConfiguration} annotation, if
+-	 * present.
+-	 * <p>
+-	 * If the supplied class name for the default ContextLoader is
+-	 * <code>null</code> or <em>empty</em> and no <code>ContextLoader</code>
+-	 * class is explicitly supplied via the             cat >.git
+-	 * <code>&#064;ContextConfiguration</code> annotation, a
+-	 * {@link org.springframework.test.context.support.GenericXmlContextLoader
+-	 * GenericXmlContextLoader} will be used instead.
+-	 * </p>
+-	 *
+-	 * @param testClass the test class for which the test context should be
+-	 * constructed (must not be <code>null</code>)
+-	 * @param contextCache the context cache from which the constructed test
+-	 * context should retrieve application contexts (must not be
+-	 * <code>null</code>)
+-	 * @param defaultContextLoaderClassName the name of the default
+-	 * <code>ContextLoader</code> class to use (may be <code>null</code>)
+-	 */
+-	TestClassContext(Class<?> testClass, ContextCache contextCache, String defaultContextLoaderClassName) {
+-		Assert.notNull(testClass, "Test class must not be null");
+-		Assert.notNull(contextCache, "ContextCache must not be null");
+-
+-		if (!StringUtils.hasText(defaultContextLoaderClassName)) {
+-			defaultContextLoaderClassName = STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME;
+-		}
+-
+-		ContextConfiguration contextConfiguration = testClass.getAnnotation(ContextConfiguration.class);
+-		String[] locations = null;
+-		ContextLoader contextLoader = null;
+-
+-		if (contextConfiguration == null) {
+-			if (logger.isInfoEnabled()) {
+-				logger.info("@ContextConfiguration not found for class [" + testClass + "]");
+-			}
+-		}
+-		else {
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for class [" + testClass
+-						+ "]");
+-			}
+-
+-			Class<? extends ContextLoader> contextLoaderClass = retrieveContextLoaderClass(testClass,
+-				defaultContextLoaderClassName);
+-			contextLoader = BeanUtils.instantiateClass(contextLoaderClass);
+-			locations = retrieveContextLocations(contextLoader, testClass);
+-		}
+-
+-		this.testClass = testClass;
+-		this.contextCache = contextCache;
+-		this.contextLoader = contextLoader;
+-		this.locations = locations;
+-	}
+-
+-	/**
+-	 * <p>
+-	 * Retrieve the {@link ContextLoader} {@link Class} to use for the supplied
+-	 * {@link Class test class}.
+-	 * <ol>
+-	 * <li>If the {@link ContextConfiguration#loader() loader} attribute of
+-	 * {@link ContextConfiguration &#064;ContextConfiguration} is configured
+-	 * with an explicit class, that class will be returned.</li>
+-	 * <li>If a <code>loader</code> class is not specified, the class hierarchy
+-	 * will be traversed to find a parent class annotated with
+-	 * <code>&#064;ContextConfiguration</code>; go to step #1.</li>
+-	 * <li>If no explicit <code>loader</code> class is found after traversing
+-	 * the class hierarchy, an attempt will be made to load and return the class
+-	 * with the supplied <code>defaultContextLoaderClassName</code>.</li>
+-	 * </ol>
+-	 *
+-	 * @param clazz the class for which to retrieve <code>ContextLoader</code>
+-	 * class; must not be <code>null</code>
+-	 * @param defaultContextLoaderClassName the name of the default
+-	 * <code>ContextLoader</code> class to use; must not be <code>null</code> or
+-	 * empty
+-	 * @return the <code>ContextLoader</code> class to use for the specified
+-	 * class
+-	 * @throws IllegalArgumentException if {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
+-	 */
+-	@SuppressWarnings("unchecked")
+-	private Class<? extends ContextLoader> retrieveContextLoaderClass(Class<?> clazz,
+-			String defaultContextLoaderClassName) {
+-		Assert.notNull(clazz, "Class must not be null");
+-		Assert.hasText(defaultContextLoaderClassName, "Default ContextLoader class name must not be null or empty");
+-
+-		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
+-		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
+-		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
+-				+ annotationType + "] and class [" + clazz + "]");
+-
+-		while (declaringClass != null) {
+-			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Processing ContextLoader for @ContextConfiguration [" + contextConfiguration
+-						+ "] and declaring class [" + declaringClass + "]");
+-			}
+-
+-			Class<? extends ContextLoader> contextLoaderClass = contextConfiguration.loader();
+-			if (!ContextLoader.class.equals(contextLoaderClass)) {
+-				if (logger.isDebugEnabled()) {
+-					logger.debug("Found explicit ContextLoader [" + contextLoaderClass
+-							+ "] for @ContextConfiguration [" + contextConfiguration + "] and declaring class ["
+-							+ declaringClass + "]");
+-				}
+-				return contextLoaderClass;
+-			}
+-
+-			declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType,
+-				declaringClass.getSuperclass());
+-		}
+-
+-		try {
+-			ContextConfiguration contextConfiguration = clazz.getAnnotation(ContextConfiguration.class);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Using default ContextLoader class [" + defaultContextLoaderClassName
+-						+ "] for @ContextConfiguration [" + contextConfiguration + "] and class [" + clazz + "]");
+-			}
+-			return (Class<? extends ContextLoader>) getClass().getClassLoader().loadClass(defaultContextLoaderClassName);
+-		}
+-		catch (ClassNotFoundException ex) {
+-			throw new IllegalStateException("Could not load default ContextLoader class ["
+-					+ defaultContextLoaderClassName + "]. Specify @ContextConfiguration's 'loader' "
+-					+ "attribute or make the default loader class available.");
+-		}
+-	}
+-
+-	/**
+-	 * Retrieve {@link ApplicationContext} resource locations for the supplied
+-	 * {@link Class class}, using the supplied {@link ContextLoader} to
+-	 * {@link ContextLoader#processLocations(Class, String...) process} the
+-	 * locations.
+-	 * <p>
+-	 * Note that the {@link ContextConfiguration#inheritLocations()
+-	 * inheritLocations} flag of {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} will be taken into consideration.
+-	 * Specifically, if the <code>inheritLocations</code> flag is set to
+-	 * <code>true</code>, locations defined in the annotated class will be
+-	 * appended to the locations defined in superclasses.
+-	 *
+-	 * @param contextLoader the ContextLoader to use for processing the
+-	 * locations (must not be <code>null</code>)
+-	 * @param clazz the class for which to retrieve the resource locations (must
+-	 * not be <code>null</code>)
+-	 * @return the list of ApplicationContext resource locations for the
+-	 * specified class, including locations from superclasses if appropriate
+-	 * @throws IllegalArgumentException if {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
+-	 */
+-	private String[] retrieveContextLocations(ContextLoader contextLoader, Class<?> clazz) {
+-		Assert.notNull(contextLoader, "ContextLoader must not be null");
+-		Assert.notNull(clazz, "Class must not be null");
+-
+-		List<String> locationsList = new ArrayList<String>();
+-		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
+-		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
+-		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
+-				+ annotationType + "] and class [" + clazz + "]");
+-
+-		while (declaringClass != null) {
+-			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for declaring class ["
+-						+ declaringClass + "]");
+-			}
+-
+-			String[] valueLocations = contextConfiguration.value();
+-			String[] locations = contextConfiguration.locations();
+-			if (!ObjectUtils.isEmpty(valueLocations) && !ObjectUtils.isEmpty(locations)) {
+-				String msg = String.format(
+-					"Test class [%s] has been configured with @ContextConfiguration's 'value' [%s] and 'locations' [%s] attributes. Only one declaration of resource locations is permitted per @ContextConfiguration annotation.",
+-					declaringClass, ObjectUtils.nullSafeToString(valueLocations),
+-					ObjectUtils.nullSafeToString(locations));
+-				logger.error(msg);
+-				throw new IllegalStateException(msg);
+-			}
+-			else if (!ObjectUtils.isEmpty(valueLocations)) {
+-				locations = valueLocations;
+-			}
+-
+-			locations = contextLoader.processLocations(declaringClass, locations);
+-			locationsList.addAll(0, Arrays.<String> asList(locations));
+-			declaringClass = contextConfiguration.inheritLocations() ? AnnotationUtils.findAnnotationDeclaringClass(
+-				annotationType, declaringClass.getSuperclass()) : null;
+-		}
+-
+-		return locationsList.toArray(new String[locationsList.size()]);
+-	}
+-	
+-
+-	/**
+-	 * Build an ApplicationContext for this test context using the configured
+-	 * ContextLoader and resource locations.
+-	 *
+-	 * @throws Exception if an error occurs while building the application
+-	 * context
+-	 * @return an application context
+-	 */
+-	ApplicationContext loadApplicationContext() throws Exception {
+-		Assert.notNull(this.contextLoader, "Can not build an ApplicationContext with a NULL 'contextLoader'. "
+-				+ "Consider annotating your test class with @ContextConfiguration.");
+-		Assert.notNull(this.locations, "Can not build an ApplicationContext with a NULL 'locations' array. "
+-				+ "Consider annotating your test class with @ContextConfiguration.");
+-		return this.contextLoader.loadContext(this.locations);
+-	}
+-
+-	/**
+-	 * Convert the supplied context <code>key</code> to a String representation
+-	 * for use in caching, logging, etc.
++    private static final long serialVersionUID = -8827157174866681247L;
++
++    private static final String STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME = "org.springframework.test.context.support.GenericXmlContextLoader";
++
++    private static final Log logger = LogFactory.getLog(TestClassContext.class);
++
++    private final ContextCache contextCache;
++
++    private final ContextLoader contextLoader;
++
++    private final String[] locations;
++
++    private final Class<?> testClass;
++
++
++
++    private final ReadWriteLock dirtiesContextLock = new ReentrantReadWriteLock();
++    // These two locks guard access to the context, so any test that attempts to dirty the context has to obtain exclusive access.
++    // There may be some pitfalls yet to be seen here.
++    private final Lock readContextLock = dirtiesContextLock.readLock();
++    private final Lock writeContextLock = dirtiesContextLock.writeLock();
++
++
++    /**
++     * Construct a new test context for the supplied {@link Class test class}
++     * and {@link ContextCache context cache} and parse the corresponding
++     * {@link ContextConfiguration &#064;ContextConfiguration} annotation, if
++     * present.
++     * <p>
++     * If the supplied class name for the default ContextLoader is
++     * <code>null</code> or <em>empty</em> and no <code>ContextLoader</code>
++     * class is explicitly supplied via the             cat >.git
++     * <code>&#064;ContextConfiguration</code> annotation, a
++     * {@link org.springframework.test.context.support.GenericXmlContextLoader
++     * GenericXmlContextLoader} will be used instead.
++     * </p>
++     *
++     * @param testClass                     the test class for which the test context should be
++     *                                      constructed (must not be <code>null</code>)
++     * @param contextCache                  the context cache from which the constructed test
++     *                                      context should retrieve application contexts (must not be
++     *                                      <code>null</code>)
++     * @param defaultContextLoaderClassName the name of the default
++     *                                      <code>ContextLoader</code> class to use (may be <code>null</code>)
++     */
++    TestClassContext(Class<?> testClass, ContextCache contextCache, String defaultContextLoaderClassName) {
++        Assert.notNull(testClass, "Test class must not be null");
++        Assert.notNull(contextCache, "ContextCache must not be null");
++
++        if (!StringUtils.hasText(defaultContextLoaderClassName)) {
++            defaultContextLoaderClassName = STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME;
++        }
++
++        ContextConfiguration contextConfiguration = testClass.getAnnotation(ContextConfiguration.class);
++        String[] locations = null;
++        ContextLoader contextLoader = null;
++
++        if (contextConfiguration == null) {
++            if (logger.isInfoEnabled()) {
++                logger.info("@ContextConfiguration not found for class [" + testClass + "]");
++            }
++        } else {
++            if (logger.isTraceEnabled()) {
++                logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for class [" + testClass
++                        + "]");
++            }
++
++            Class<? extends ContextLoader> contextLoaderClass = retrieveContextLoaderClass(testClass,
++                    defaultContextLoaderClassName);
++            contextLoader = BeanUtils.instantiateClass(contextLoaderClass);
++            locations = retrieveContextLocations(contextLoader, testClass);
++        }
++
++        this.testClass = testClass;
++        this.contextCache = contextCache;
++        this.contextLoader = contextLoader;
++        this.locations = locations;
++    }
++
++    /**
++     * <p/>
++     * Retrieve the {@link ContextLoader} {@link Class} to use for the supplied
++     * {@link Class test class}.
++     * <ol>
++     * <li>If the {@link ContextConfiguration#loader() loader} attribute of
++     * {@link ContextConfiguration &#064;ContextConfiguration} is configured
++     * with an explicit class, that class will be returned.</li>
++     * <li>If a <code>loader</code> class is not specified, the class hierarchy
++     * will be traversed to find a parent class annotated with
++     * <code>&#064;ContextConfiguration</code>; go to step #1.</li>
++     * <li>If no explicit <code>loader</code> class is found after traversing
++     * the class hierarchy, an attempt will be made to load and return the class
++     * with the supplied <code>defaultContextLoaderClassName</code>.</li>
++     * </ol>
++     *
++     * @param clazz                         the class for which to retrieve <code>ContextLoader</code>
++     *                                      class; must not be <code>null</code>
++     * @param defaultContextLoaderClassName the name of the default
++     *                                      <code>ContextLoader</code> class to use; must not be <code>null</code> or
++     *                                      empty
++     * @return the <code>ContextLoader</code> class to use for the specified
++     *         class
++     * @throws IllegalArgumentException if {@link ContextConfiguration
++     *                                  &#064;ContextConfiguration} is not <em>present</em> on the supplied class
++     */
++    @SuppressWarnings("unchecked")
++    private Class<? extends ContextLoader> retrieveContextLoaderClass(Class<?> clazz,
++                                                                      String defaultContextLoaderClassName) {
++        Assert.notNull(clazz, "Class must not be null");
++        Assert.hasText(defaultContextLoaderClassName, "Default ContextLoader class name must not be null or empty");
++
++        Class<ContextConfiguration> annotationType = ContextConfiguration.class;
++        Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
++        Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
++                + annotationType + "] and class [" + clazz + "]");
++
++        while (declaringClass != null) {
++            ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
++            if (logger.isTraceEnabled()) {
++                logger.trace("Processing ContextLoader for @ContextConfiguration [" + contextConfiguration
++                        + "] and declaring class [" + declaringClass + "]");
++            }
++
++            Class<? extends ContextLoader> contextLoaderClass = contextConfiguration.loader();
++            if (!ContextLoader.class.equals(contextLoaderClass)) {
++                if (logger.isDebugEnabled()) {
++                    logger.debug("Found explicit ContextLoader [" + contextLoaderClass
++                            + "] for @ContextConfiguration [" + contextConfiguration + "] and declaring class ["
++                            + declaringClass + "]");
++                }
++                return contextLoaderClass;
++            }
++
++            declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType,
++                    declaringClass.getSuperclass());
++        }
++
++        try {
++            ContextConfiguration contextConfiguration = clazz.getAnnotation(ContextConfiguration.class);
++            if (logger.isTraceEnabled()) {
++                logger.trace("Using default ContextLoader class [" + defaultContextLoaderClassName
++                        + "] for @ContextConfiguration [" + contextConfiguration + "] and class [" + clazz + "]");
++            }
++            return (Class<? extends ContextLoader>) getClass().getClassLoader().loadClass(defaultContextLoaderClassName);
++        }
++        catch (ClassNotFoundException ex) {
++            throw new IllegalStateException("Could not load default ContextLoader class ["
++                    + defaultContextLoaderClassName + "]. Specify @ContextConfiguration's 'loader' "
++                    + "attribute or make the default loader class available.");
++        }
++    }
++
++    /**
++     * Retrieve {@link ApplicationContext} resource locations for the supplied
++     * {@link Class class}, using the supplied {@link ContextLoader} to
++     * {@link ContextLoader#processLocations(Class, String...) process} the
++     * locations.
++     * <p/>
++     * Note that the {@link ContextConfiguration#inheritLocations()
++     * inheritLocations} flag of {@link ContextConfiguration
++     * &#064;ContextConfiguration} will be taken into consideration.
++     * Specifically, if the <code>inheritLocations</code> flag is set to
++     * <code>true</code>, locations defined in the annotated class will be
++     * appended to the locations defined in superclasses.
++     *
++     * @param contextLoader the ContextLoader to use for processing the
++     *                      locations (must not be <code>null</code>)
++     * @param clazz         the class for which to retrieve the resource locations (must
++     *                      not be <code>null</code>)
++     * @return the list of ApplicationContext resource locations for the
++     *         specified class, including locations from superclasses if appropriate
++     * @throws IllegalArgumentException if {@link ContextConfiguration
++     *                                  &#064;ContextConfiguration} is not <em>present</em> on the supplied class
++     */
++    private String[] retrieveContextLocations(ContextLoader contextLoader, Class<?> clazz) {
++        Assert.notNull(contextLoader, "ContextLoader must not be null");
++        Assert.notNull(clazz, "Class must not be null");
++
++        List<String> locationsList = new ArrayList<String>();
++        Class<ContextConfiguration> annotationType = ContextConfiguration.class;
++        Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
++        Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
++                + annotationType + "] and class [" + clazz + "]");
++
++        while (declaringClass != null) {
++            ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
++            if (logger.isTraceEnabled()) {
++                logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for declaring class ["
++                        + declaringClass + "]");
++            }
++
++            String[] valueLocations = contextConfiguration.value();
++            String[] locations = contextConfiguration.locations();
++            if (!ObjectUtils.isEmpty(valueLocations) && !ObjectUtils.isEmpty(locations)) {
++                String msg = String.format(
++                        "Test class [%s] has been configured with @ContextConfiguration's 'value' [%s] and 'locations' [%s] attributes. Only one declaration of resource locations is permitted per @ContextConfiguration annotation.",
++                        declaringClass, ObjectUtils.nullSafeToString(valueLocations),
++                        ObjectUtils.nullSafeToString(locations));
++                logger.error(msg);
++                throw new IllegalStateException(msg);
++            } else if (!ObjectUtils.isEmpty(valueLocations)) {
++                locations = valueLocations;
++            }
++
++            locations = contextLoader.processLocations(declaringClass, locations);
++            locationsList.addAll(0, Arrays.<String>asList(locations));
++            declaringClass = contextConfiguration.inheritLocations() ? AnnotationUtils.findAnnotationDeclaringClass(
++                    annotationType, declaringClass.getSuperclass()) : null;
++        }
++
++        return locationsList.toArray(new String[locationsList.size()]);
++    }
++
++
++    /**
++     * Build an ApplicationContext for this test context using the configured
++     * ContextLoader and resource locations.
++     *
++     * @return an application context
++     * @throws Exception if an error occurs while building the application
++     *                   context
++     */
++    ApplicationContext loadApplicationContext() throws Exception {
++        Assert.notNull(this.contextLoader, "Can not build an ApplicationContext with a NULL 'contextLoader'. "
++                + "Consider annotating your test class with @ContextConfiguration.");
++        Assert.notNull(this.locations, "Can not build an ApplicationContext with a NULL 'locations' array. "
++                + "Consider annotating your test class with @ContextConfiguration.");
++        return this.contextLoader.loadContext(this.locations);
++    }
++
++    /**
++     * Convert the supplied context <code>key</code> to a String representation
++     * for use in caching, logging, etc.
++     *
+      * @param key the path string to use as basis
+-	 * @return a key
+-	 */
+-	private ContextCacheKey contextKey(Serializable key) {
+-		return new ContextCacheKey( key);
+-	}
+-
+-
+-	/**
+-	 * Get the {@link ApplicationContext application context} for this test
+-	 * context, possibly cached.
+-	 *
+-	 * @return the application context
+-	 * @throws IllegalStateException if an error occurs while retrieving the
+-	 * application context
+-	 */
+-	public ApplicationContext getApplicationContext() {
+-		synchronized (this.contextCache) {
++     * @return a key
++     */
++    private ContextCacheKey contextKey(Serializable key) {
++        return new ContextCacheKey(key);
++    }
++
++
++    /**
++     * Get the {@link ApplicationContext application context} for this test
++     * context, possibly cached.
++     *
++     * @return the application context
++     * @throws IllegalStateException if an error occurs while retrieving the
++     *                               application context
++     */
++    private ApplicationContext getApplicationContext() {
++        synchronized (this.contextCache) {
+             final ContextCacheKey key = contextKey(this.locations);
+-			ApplicationContext context = this.contextCache.get(key);
+-			if (context == null) {
+-				try {
+-					context = loadApplicationContext();
+-					this.contextCache.put(key, context);
+-				}
+-				catch (Exception ex) {
+-					throw new IllegalStateException("Failed to load ApplicationContext", ex);
+-				}
+-			}
+-			if (contextLoader != null) contextLoader.activateForThread(context, key);
+-			return context;
+-		}
+-	}
++            ApplicationContext context = this.contextCache.get(key);
++            if (context == null) {
++                try {
++                    context = loadApplicationContext();
++                    this.contextCache.put(key, context);
++                }
++                catch (Exception ex) {
++                    throw new IllegalStateException("Failed to load ApplicationContext", ex);
++                }
++            }
++            if (contextLoader != null) contextLoader.activateForThread(context, key);
++            return context;
++        }
++    }
++
++    /**
++     * Get the {@link Class test class} for this test context.
++     *
++     * @return the test class (never <code>null</code>)
++     */
++    public final Class<?> getTestClass() {
++        return this.testClass;
++    }
++
++    /**
++     * Call this method to signal that the {@link org.springframework.context.ApplicationContext application
++     * context} associated with this test context is <em>dirty</em> and should
++     * be reloaded. Do this if a test has modified the context (for example, by
++     * replacing a bean definition).
++     */
++    public void markApplicationContextDirty() {
++        writeContextLock.lock();
++        try {
++            this.contextCache.setDirty(contextKey(this.locations));
++        } finally {
++            writeContextLock.unlock();
++        }
++    }
++
++    public void initializeBean(Object bean) {
++        readContextLock.lock();
++        try {
++            AutowireCapableBeanFactory beanFactory = getApplicationContext().getAutowireCapableBeanFactory();
++            beanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_NO, false);
++            beanFactory.initializeBean(bean, getTestClass().getName());
++        } finally {
++            readContextLock.unlock();
++        }
++    }
++
++    public <T> T getBean(String s, java.lang.Class<T> tClass) throws org.springframework.beans.BeansException {
++        readContextLock.lock();
++        try {
++            return getApplicationContext().getBean(s, tClass);
++        } finally {
++            readContextLock.unlock();
++        }
++    }
++
+ 
+     /**
+-	 * Get the {@link Class test class} for this test context.
+-	 *
+-	 * @return the test class (never <code>null</code>)
+-	 */
+-	public final Class<?> getTestClass() {
+-		return this.testClass;
+-	}
+-
+-
+-	/**
+-	 * Call this method to signal that the {@link org.springframework.context.ApplicationContext application
+-	 * context} associated with this test context is <em>dirty</em> and should
+-	 * be reloaded. Do this if a test has modified the context (for example, by
+-	 * replacing a bean definition).
+-	 */
+-	public void markApplicationContextDirty() {
+-		this.contextCache.setDirty(contextKey(this.locations));
+-	}
+-
+-	
+-	/**
+-	 * Provide a String representation of this test context's state.
+-	 */
+-	@Override
+-	public String toString() {
+-		return new ToStringCreator(this)//
+-		.append("testClass", this.testClass)//
+-		.append("locations", this.locations)//
+-		.toString();
+-	}
++     * Provide a String representation of this test context's state.
++     */
++    @Override
++    public String toString() {
++        return new ToStringCreator(this)//
++                .append("testClass", this.testClass)//
++                .append("locations", this.locations)//
++                .toString();
++    }
+ 
+ }
+\ No newline at end of file
+diff --git a/src/main/java/org/springframework/test/context/TestContext.java b/src/main/java/org/springframework/test/context/TestContext.java
+index 0472d49..ebda0ff 100644
+--- a/src/main/java/org/springframework/test/context/TestContext.java
++++ b/src/main/java/org/springframework/test/context/TestContext.java
+@@ -57,19 +57,11 @@ public class TestContext extends AttributeAccessorSupport {
+ 	}
+ 
+ 
+-    /**
+-	 * Get the {@link ApplicationContext application context} for this test
+-	 * context, possibly cached.
+-	 *
+-	 * @return the application context
+-	 * @throws IllegalStateException if an error occurs while retrieving the
+-	 * application context
+-	 */
+-	public ApplicationContext getApplicationContext() {
+-		return testClassContext.getApplicationContext();
+-	}
++    public <T> T getBean(String s, java.lang.Class<T> tClass) throws org.springframework.beans.BeansException{
++        return testClassContext.getBean( s, tClass);
++    }
+ 
+-	/**
++    /**
+ 	 * Get the {@link Class test class} for this test context.
+ 	 *
+ 	 * @return the test class (never <code>null</code>)
+@@ -89,6 +81,11 @@ public class TestContext extends AttributeAccessorSupport {
+ 		return this.testInstance;
+ 	}
+ 
++    public void initTestInstanceBean(){
++        Object bean = getTestInstance();
++        testClassContext.initializeBean( bean);
++    }
++
+ 	/**
+ 	 * Get the current {@link Method test method} for this test context.
+ 	 * <p>
+diff --git a/src/main/java/org/springframework/test/context/support/DependencyInjectionTestExecutionListener.java b/src/main/java/org/springframework/test/context/support/DependencyInjectionTestExecutionListener.java
+index 36a9674..3b815b6 100644
+--- a/src/main/java/org/springframework/test/context/support/DependencyInjectionTestExecutionListener.java
++++ b/src/main/java/org/springframework/test/context/support/DependencyInjectionTestExecutionListener.java
+@@ -62,7 +62,7 @@ public class DependencyInjectionTestExecutionListener extends AbstractTestExecut
+ 	 * and
+ 	 * {@link AutowireCapableBeanFactory#initializeBean(Object, String) initializing}
+ 	 * the test instance via its own
+-	 * {@link TestContext#getApplicationContext() application context} (without
++	 * {@link TestClassContext#getApplicationContext() application context} (without
+ 	 * checking dependencies).
+ 	 * <p>The {@link #REINJECT_DEPENDENCIES_ATTRIBUTE} will be subsequently removed
+ 	 * from the test context, regardless of its value.
+@@ -105,10 +105,7 @@ public class DependencyInjectionTestExecutionListener extends AbstractTestExecut
+ 	 * @see #beforeTestMethod(TestContext)
+ 	 */
+ 	protected void injectDependencies(final TestContext testContext) throws Exception {
+-		Object bean = testContext.getTestInstance();
+-		AutowireCapableBeanFactory beanFactory = testContext.getApplicationContext().getAutowireCapableBeanFactory();
+-		beanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_NO, false);
+-		beanFactory.initializeBean(bean, testContext.getTestClass().getName());
++		testContext.initTestInstanceBean();
+ 		testContext.removeAttribute(REINJECT_DEPENDENCIES_ATTRIBUTE);
+ 	}
+ 
+diff --git a/src/main/java/org/springframework/test/context/transaction/TransactionalTestExecutionListener.java b/src/main/java/org/springframework/test/context/transaction/TransactionalTestExecutionListener.java
+index c62c31e..21fc8b0 100644
+--- a/src/main/java/org/springframework/test/context/transaction/TransactionalTestExecutionListener.java
++++ b/src/main/java/org/springframework/test/context/transaction/TransactionalTestExecutionListener.java
+@@ -296,8 +296,7 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
+ 		}
+ 		String transactionManagerName = this.configAttributes.getTransactionManagerName();
+ 		try {
+-			return (PlatformTransactionManager) testContext.getApplicationContext().getBean(
+-					transactionManagerName, PlatformTransactionManager.class);
++			return testContext.getBean(transactionManagerName, PlatformTransactionManager.class);
+ 		}
+ 		catch (BeansException ex) {
+ 			if (logger.isWarnEnabled()) {
+diff --git a/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java b/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java
+index 962f6f7..a31f1f3 100644
+--- a/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java
++++ b/src/test/java/org/springframework/test/context/concurrency/TestContextManagerConcurrencyRunnerTests.java
+@@ -17,12 +17,14 @@
+ package org.springframework.test.context.concurrency;
+ 
+ import org.junit.Test;
++import org.junit.runners.JUnit4;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertEquals;
+ import org.junit.runner.notification.RunNotifier;
+ import org.junit.runner.notification.RunListener;
+ import org.junit.runner.notification.Failure;
+ import org.junit.runner.Description;
++import org.junit.runner.RunWith;
+ import org.springframework.test.context.TestContextManager;
+ import org.springframework.test.context.ContextCleaner;
+ 
+@@ -37,6 +39,7 @@ import java.util.ArrayList;
+  * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
+  */
+ 
++@RunWith(JUnit4.class)
+ public class TestContextManagerConcurrencyRunnerTests {
+     // This instance is shared by several threads in code (used from SpringJUnit4ClassRunner)
+     final TestContextManager testContextManager = new TestContextManager(SpringJUnit4ClassRunnerEnvironmentAssumptionsTests.class);

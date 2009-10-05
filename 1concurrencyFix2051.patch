@@ -1,0 +1,1895 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..0a48de0
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,5 @@
++*.iml
++*.ipr
++*.iws
++target
++test-output
+diff --git a/pom.xml b/pom.xml
+index 3518579..2d2f0f4 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,168 +1,222 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+-<project xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+-  <modelVersion>4.0.0</modelVersion>
+-  <groupId>org.springframework</groupId>
+-  <artifactId>spring-test</artifactId>
+-  <packaging>jar</packaging>
+-  <version>3.0.0.BUILD-SNAPSHOT</version>
+-  <parent>
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd"
++         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
++    <modelVersion>4.0.0</modelVersion>
+     <groupId>org.springframework</groupId>
+-    <artifactId>spring-parent</artifactId>
+-    <relativePath>../org.springframework.spring-parent</relativePath>
+-    <version>3.0.0.BUILD-SNAPSHOT</version>
+-  </parent>
++    <artifactId>spring-test</artifactId>
++    <packaging>jar</packaging>
++    <version>3.0.0.RC1</version>
++    <!-- parent>
++     <groupId>org.springframework</groupId>
++     <artifactId>spring-parent</artifactId>
++     <relativePath>../org.springframework.spring-parent</relativePath>
++     <version>3.0.0.RC1</version>
++   </parent -->
++    <repositories>
++        <repository>
++            <id>SpringSource Maven Repo</id>
++            <url>http://maven.springframework.org/milestone</url>
++        </repository>
++    </repositories>
++    <dependencies>
++        <dependency>
++            <groupId>javax.activation</groupId>
++            <artifactId>activation</artifactId>
++            <version>1.1</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>javax.el</groupId>
++            <artifactId>el-api</artifactId>
++            <version>1.0</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>javax.persistence</groupId>
++            <artifactId>persistence-api</artifactId>
++            <version>1.0</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>javax.portlet</groupId>
++            <artifactId>portlet-api</artifactId>
++            <version>2.0</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>javax.servlet</groupId>
++            <artifactId>servlet-api</artifactId>
++            <version>2.5</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>javax.servlet.jsp</groupId>
++            <artifactId>jsp-api</artifactId>
++            <version>2.1</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.apache.geronimo.specs</groupId>
++            <artifactId>geronimo-jta_1.1_spec</artifactId>
++            <version>1.1</version>
++            <scope>provided</scope>
++        </dependency>
++        <!-- common logging dependency is in spring-core -->
++        <dependency>
++            <groupId>taglibs</groupId>
++            <artifactId>standard</artifactId>
++            <version>1.1.2</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.aspectj</groupId>
++            <artifactId>aspectjweaver</artifactId>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.hibernate</groupId>
++            <artifactId>hibernate-core</artifactId>
++            <version>3.3.1.GA</version>
++            <optional>true</optional>
++            <scope>test</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.hibernate</groupId>
++            <artifactId>hibernate-cglib-repack</artifactId>
++            <version>2.1_3</version>
++            <scope>test</scope>
++        </dependency>
++        <dependency>
++            <groupId>hsqldb</groupId>
++            <artifactId>hsqldb</artifactId>
++            <version>1.8.0.7</version>
++            <scope>test</scope>
++        </dependency>
++        <dependency>
++            <groupId>junit</groupId>
++            <artifactId>junit</artifactId>
++            <version>4.7</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.aspectj</groupId>
++            <artifactId>aspectjweaver</artifactId>
++            <optional>true</optional>
++            <version>1.6.6</version>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-beans</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-context</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-core</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-jdbc</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-orm</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-tx</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-web</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-webmvc-portlet</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-webmvc</artifactId>
++            <version>${project.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.testng</groupId>
++            <artifactId>testng</artifactId>
++            <version>5.10</version>
++            <classifier>jdk15</classifier>
++            <optional>true</optional>
++        </dependency>
++    </dependencies>
++    <build>
++        <pluginManagement>
++            <plugins>
++                <plugin>
++                    <groupId>org.apache.maven.plugins</groupId>
++                    <artifactId>maven-surefire-plugin</artifactId>
++                    <configuration>
++                        <argLine>-client -Xmx896m -XX:MaxPermSize=192m</argLine>
++                        <forkMode>once</forkMode>
++                        <includes>
++                            <include>**/**/*Tests.java</include>
++                            <include>**/**/*Test.java</include>
++                        </includes>
++                    </configuration>
++                </plugin>
+ 
+-  <dependencies>
+-    <dependency>
+-      <groupId>javax.activation</groupId>
+-      <artifactId>activation</artifactId>
+-      <version>1.1</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>javax.el</groupId>
+-      <artifactId>el-api</artifactId>
+-      <version>1.0</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>javax.persistence</groupId>
+-      <artifactId>persistence-api</artifactId>
+-      <version>1.0</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>javax.portlet</groupId>
+-      <artifactId>portlet-api</artifactId>
+-      <version>2.0</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>javax.servlet</groupId>
+-      <artifactId>servlet-api</artifactId>
+-      <version>2.5</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>javax.servlet.jsp</groupId>
+-      <artifactId>jsp-api</artifactId>
+-      <version>2.1</version>
+-      <scope>provided</scope>
+-    </dependency> 
+-    <dependency>
+-      <groupId>org.apache.geronimo.specs</groupId>
+-      <artifactId>geronimo-jta_1.1_spec</artifactId>
+-      <version>1.1</version>
+-      <scope>provided</scope>
+-    </dependency>
+-    <!-- common logging dependency is in spring-core -->
+-    <dependency>
+-      <groupId>taglibs</groupId>
+-      <artifactId>standard</artifactId>
+-      <version>1.1.2</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.aspectj</groupId>
+-      <artifactId>aspectjweaver</artifactId>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.hibernate</groupId>
+-      <artifactId>hibernate-core</artifactId>
+-      <version>3.3.1.GA</version>
+-      <optional>true</optional>
+-      <scope>test</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.hibernate</groupId>
+-      <artifactId>hibernate-cglib-repack</artifactId>
+-      <version>2.1_3</version>
+-      <scope>test</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>hsqldb</groupId>
+-      <artifactId>hsqldb</artifactId>
+-      <version>1.8.0.7</version>
+-      <scope>test</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>junit</groupId>
+-      <artifactId>junit</artifactId>
+-      <version>3.8.2</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>junit</groupId>
+-      <artifactId>junit</artifactId>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.aspectj</groupId>
+-      <artifactId>aspectjweaver</artifactId>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-beans</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-context</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-core</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-jdbc</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-orm</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-tx</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-web</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-webmvc-portlet</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.springframework</groupId>
+-      <artifactId>spring-webmvc</artifactId>
+-      <version>${project.version}</version>
+-      <optional>true</optional>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.testng</groupId>
+-      <artifactId>testng</artifactId>
+-      <version>5.10</version>
+-      <classifier>jdk15</classifier>
+-      <optional>true</optional>
+-    </dependency>
++                <plugin>
++                    <artifactId>maven-compiler-plugin</artifactId>
++                    <version>2.0.2</version>
++                    <configuration>
++                        <encoding>ISO-8859-1</encoding>
++                        <source>${jdk.version}</source>
++                        <target>${jdk.version}</target>
++                    </configuration>
++                </plugin>
++            </plugins>
++        </pluginManagement>
++  <resources>
++    <resource>
++      <directory>src/test/java</directory>
++      <excludes>
++        <exclude>**/*.java</exclude>
++      </excludes>
++     </resource>
++       <resource>
++      <directory>src/main/java</directory>
++      <excludes>
++        <exclude>**/*.java</exclude>
++      </excludes>
++    </resource>
+ 
+-  </dependencies>
++    <resource>
++      <directory>src/test/resources</directory>
++    </resource>
++  </resources>
++    </build>
+ 
++    <properties>
++        <springframework.version>3.0.0.RC1</springframework.version>
++        <jdk.version>1.6</jdk.version>
++        <project.version>3.0.0.RC1</project.version>
++    </properties>
+ </project>
+diff --git a/src/main/java/org/springframework/test/context/ContextCache.java b/src/main/java/org/springframework/test/context/ContextCache.java
+index e63969f..3c461f6 100644
+--- a/src/main/java/org/springframework/test/context/ContextCache.java
++++ b/src/main/java/org/springframework/test/context/ContextCache.java
+@@ -46,8 +46,8 @@ class ContextCache {
+ 	/**
+ 	 * Map of context keys to Spring ApplicationContext instances.
+ 	 */
+-	private final Map<String, ApplicationContext> contextKeyToContextMap =
+-			new ConcurrentHashMap<String, ApplicationContext>();
++	private final Map<ContextCacheKey, ApplicationContext> contextKeyToContextMap =
++			new ConcurrentHashMap<ContextCacheKey, ApplicationContext>();
+ 
+ 	private int hitCount;
+ 
+@@ -73,8 +73,9 @@ class ContextCache {
+ 	/**
+ 	 * Return whether there is a cached context for the given key.
+ 	 * @param key the context key (never <code>null</code>)
++	 * @return true if the cache contains an entry for the key
+ 	 */
+-	boolean contains(String key) {
++	boolean contains(ContextCacheKey key) {
+ 		Assert.notNull(key, "Key must not be null");
+ 		return this.contextKeyToContextMap.containsKey(key);
+ 	}
+@@ -88,7 +89,7 @@ class ContextCache {
+ 	 * or <code>null</code> if not found in the cache.
+ 	 * @see #remove
+ 	 */
+-	ApplicationContext get(String key) {
++	ApplicationContext get(ContextCacheKey key) {
+ 		Assert.notNull(key, "Key must not be null");
+ 		ApplicationContext context = this.contextKeyToContextMap.get(key);
+ 		if (context == null) {
+@@ -119,6 +120,7 @@ class ContextCache {
+ 	/**
+ 	 * Get the overall hit count for this cache. A <em>hit</em> is an access
+ 	 * to the cache, which returned a non-null context for a queried key.
++	 * @return the number of cache hits
+ 	 */
+ 	int getHitCount() {
+ 		return this.hitCount;
+@@ -128,6 +130,7 @@ class ContextCache {
+ 	 * Get the overall miss count for this cache. A <em>miss</em> is an
+ 	 * access to the cache, which returned a <code>null</code> context for a
+ 	 * queried key.
++	 * @return the number of cache misses
+ 	 */
+ 	int getMissCount() {
+ 		return this.missCount;
+@@ -138,7 +141,7 @@ class ContextCache {
+ 	 * @param key the context key (never <code>null</code>)
+ 	 * @param context the ApplicationContext instance (never <code>null</code>)
+ 	 */
+-	void put(String key, ApplicationContext context) {
++	void put(ContextCacheKey key, ApplicationContext context) {
+ 		Assert.notNull(key, "Key must not be null");
+ 		Assert.notNull(context, "ApplicationContext must not be null");
+ 		this.contextKeyToContextMap.put(key, context);
+@@ -151,7 +154,7 @@ class ContextCache {
+ 	 * or <code>null</code> if not found in the cache.
+ 	 * @see #setDirty
+ 	 */
+-	ApplicationContext remove(String key) {
++	ApplicationContext remove(ContextCacheKey key) {
+ 		return this.contextKeyToContextMap.remove(key);
+ 	}
+ 
+@@ -166,7 +169,7 @@ class ContextCache {
+ 	 * @param key the context key (never <code>null</code>)
+ 	 * @see #remove
+ 	 */
+-	void setDirty(String key) {
++	void setDirty(ContextCacheKey key) {
+ 		Assert.notNull(key, "Key must not be null");
+ 		ApplicationContext context = remove(key);
+ 		if (context instanceof ConfigurableApplicationContext) {
+@@ -178,6 +181,7 @@ class ContextCache {
+ 	 * Determine the number of contexts currently stored in the cache. If the
+ 	 * cache contains more than <tt>Integer.MAX_VALUE</tt> elements, returns
+ 	 * <tt>Integer.MAX_VALUE</tt>.
++	 * @return the size of the cache
+ 	 */
+ 	int size() {
+ 		return this.contextKeyToContextMap.size();
+diff --git a/src/main/java/org/springframework/test/context/ContextCacheKey.java b/src/main/java/org/springframework/test/context/ContextCacheKey.java
+new file mode 100644
+index 0000000..8bc7ba8
+--- /dev/null
++++ b/src/main/java/org/springframework/test/context/ContextCacheKey.java
+@@ -0,0 +1,41 @@
++package org.springframework.test.context;
++
++import java.io.Serializable;
++
++import org.springframework.util.ObjectUtils;
++
++/**
++ * A key that a custom context loader can use to cache own data.
++ * @author <a href="mailto:kristian@zeniorD0Tno">Kristian Rosenvold</a>
++ * */
++public class ContextCacheKey {
++	private final String key;
++
++	public ContextCacheKey(Serializable key) {
++		this.key = ObjectUtils.nullSafeToString(key); // + contextLoader.getClass().getName();
++	}
++
++	@SuppressWarnings({"RedundantIfStatement"})
++	@Override
++	public boolean equals(Object o) {
++		if (this == o) {
++			return true;
++		}
++		if (o == null || getClass() != o.getClass()) {
++			return false;
++		}
++
++		ContextCacheKey key1 = (ContextCacheKey) o;
++
++		if (key != null ? !key.equals(key1.key) : key1.key != null) {
++			return false;
++		}
++
++		return true;
++	}
++
++	@Override
++	public int hashCode() {
++		return key != null ? key.hashCode() : 0;
++	}
++}
+diff --git a/src/main/java/org/springframework/test/context/ContextLoader.java b/src/main/java/org/springframework/test/context/ContextLoader.java
+index 5c125c7..598cc8d 100644
+--- a/src/main/java/org/springframework/test/context/ContextLoader.java
++++ b/src/main/java/org/springframework/test/context/ContextLoader.java
+@@ -80,4 +80,20 @@ public interface ContextLoader {
+ 	 */
+ 	ApplicationContext loadContext(String... locations) throws Exception;
+ 
++	/**
++	 * Activates this context for the current thread.
++	 *
++	 * This method is called every time an applicationContext is assigned to a thread,
++	 * including the first time the context is created. The thread may have previously been assigned
++	 *  a different applicationContext.
++	 *
++     * This method may be needed activate non-spring managed artifacts associated with threads
++     * when using web scopes.
++	 *
++	 * @param applicationContext The context that is to be activated
++	 * @param contextCacheKey The cache key that the context loader can use to cache additional data
++	 * @since 3.1
++	 */
++	void activateForThread(ApplicationContext applicationContext, ContextCacheKey contextCacheKey);
++
+ }
+diff --git a/src/main/java/org/springframework/test/context/TestClassContext.java b/src/main/java/org/springframework/test/context/TestClassContext.java
+new file mode 100644
+index 0000000..d41eb71
+--- /dev/null
++++ b/src/main/java/org/springframework/test/context/TestClassContext.java
+@@ -0,0 +1,341 @@
++/*
++ * Copyright 2002-2009 the original author or authors.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.springframework.test.context;
++
++import java.io.Serializable;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.springframework.beans.BeanUtils;
++import org.springframework.context.ApplicationContext;
++import org.springframework.core.AttributeAccessorSupport;
++import org.springframework.core.annotation.AnnotationUtils;
++import org.springframework.core.style.ToStringCreator;
++import org.springframework.util.Assert;
++import org.springframework.util.ObjectUtils;
++import org.springframework.util.StringUtils;
++
++/**
++ * TestClassContext encapsulates the class-invariant context in which a test is executed, agnostic of
++ * the actual testing framework in use.
++ * 
++ * @author Sam Brannen
++ * @author Juergen Hoeller
++ * @author Kristian Rosenvold
++ * @since 2.5
++ */
++public class TestClassContext extends AttributeAccessorSupport {
++
++	private static final long serialVersionUID = -8827157174866681247L;
++
++	private static final String STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME = "org.springframework.test.context.support.GenericXmlContextLoader";
++
++	private static final Log logger = LogFactory.getLog(TestClassContext.class);
++
++	private final ContextCache contextCache;
++
++	private final ContextLoader contextLoader;
++
++	private final String[] locations;
++
++	private final Class<?> testClass;
++
++
++
++	/**
++	 * Construct a new test context for the supplied {@link Class test class}
++	 * and {@link ContextCache context cache} and parse the corresponding
++	 * {@link ContextConfiguration &#064;ContextConfiguration} annotation, if
++	 * present.
++	 * <p>
++	 * If the supplied class name for the default ContextLoader is
++	 * <code>null</code> or <em>empty</em> and no <code>ContextLoader</code>
++	 * class is explicitly supplied via the             cat >.git
++	 * <code>&#064;ContextConfiguration</code> annotation, a
++	 * {@link org.springframework.test.context.support.GenericXmlContextLoader
++	 * GenericXmlContextLoader} will be used instead.
++	 * </p>
++	 *
++	 * @param testClass the test class for which the test context should be
++	 * constructed (must not be <code>null</code>)
++	 * @param contextCache the context cache from which the constructed test
++	 * context should retrieve application contexts (must not be
++	 * <code>null</code>)
++	 * @param defaultContextLoaderClassName the name of the default
++	 * <code>ContextLoader</code> class to use (may be <code>null</code>)
++	 */
++	TestClassContext(Class<?> testClass, ContextCache contextCache, String defaultContextLoaderClassName) {
++		Assert.notNull(testClass, "Test class must not be null");
++		Assert.notNull(contextCache, "ContextCache must not be null");
++
++		if (!StringUtils.hasText(defaultContextLoaderClassName)) {
++			defaultContextLoaderClassName = STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME;
++		}
++
++		ContextConfiguration contextConfiguration = testClass.getAnnotation(ContextConfiguration.class);
++		String[] locations = null;
++		ContextLoader contextLoader = null;
++
++		if (contextConfiguration == null) {
++			if (logger.isInfoEnabled()) {
++				logger.info("@ContextConfiguration not found for class [" + testClass + "]");
++			}
++		}
++		else {
++			if (logger.isTraceEnabled()) {
++				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for class [" + testClass
++						+ "]");
++			}
++
++			Class<? extends ContextLoader> contextLoaderClass = retrieveContextLoaderClass(testClass,
++				defaultContextLoaderClassName);
++			contextLoader = BeanUtils.instantiateClass(contextLoaderClass);
++			locations = retrieveContextLocations(contextLoader, testClass);
++		}
++
++		this.testClass = testClass;
++		this.contextCache = contextCache;
++		this.contextLoader = contextLoader;
++		this.locations = locations;
++	}
++
++	/**
++	 * <p>
++	 * Retrieve the {@link ContextLoader} {@link Class} to use for the supplied
++	 * {@link Class test class}.
++	 * <ol>
++	 * <li>If the {@link ContextConfiguration#loader() loader} attribute of
++	 * {@link ContextConfiguration &#064;ContextConfiguration} is configured
++	 * with an explicit class, that class will be returned.</li>
++	 * <li>If a <code>loader</code> class is not specified, the class hierarchy
++	 * will be traversed to find a parent class annotated with
++	 * <code>&#064;ContextConfiguration</code>; go to step #1.</li>
++	 * <li>If no explicit <code>loader</code> class is found after traversing
++	 * the class hierarchy, an attempt will be made to load and return the class
++	 * with the supplied <code>defaultContextLoaderClassName</code>.</li>
++	 * </ol>
++	 *
++	 * @param clazz the class for which to retrieve <code>ContextLoader</code>
++	 * class; must not be <code>null</code>
++	 * @param defaultContextLoaderClassName the name of the default
++	 * <code>ContextLoader</code> class to use; must not be <code>null</code> or
++	 * empty
++	 * @return the <code>ContextLoader</code> class to use for the specified
++	 * class
++	 * @throws IllegalArgumentException if {@link ContextConfiguration
++	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
++	 */
++	@SuppressWarnings("unchecked")
++	private Class<? extends ContextLoader> retrieveContextLoaderClass(Class<?> clazz,
++			String defaultContextLoaderClassName) {
++		Assert.notNull(clazz, "Class must not be null");
++		Assert.hasText(defaultContextLoaderClassName, "Default ContextLoader class name must not be null or empty");
++
++		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
++		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
++		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
++				+ annotationType + "] and class [" + clazz + "]");
++
++		while (declaringClass != null) {
++			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
++			if (logger.isTraceEnabled()) {
++				logger.trace("Processing ContextLoader for @ContextConfiguration [" + contextConfiguration
++						+ "] and declaring class [" + declaringClass + "]");
++			}
++
++			Class<? extends ContextLoader> contextLoaderClass = contextConfiguration.loader();
++			if (!ContextLoader.class.equals(contextLoaderClass)) {
++				if (logger.isDebugEnabled()) {
++					logger.debug("Found explicit ContextLoader [" + contextLoaderClass
++							+ "] for @ContextConfiguration [" + contextConfiguration + "] and declaring class ["
++							+ declaringClass + "]");
++				}
++				return contextLoaderClass;
++			}
++
++			declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType,
++				declaringClass.getSuperclass());
++		}
++
++		try {
++			ContextConfiguration contextConfiguration = clazz.getAnnotation(ContextConfiguration.class);
++			if (logger.isTraceEnabled()) {
++				logger.trace("Using default ContextLoader class [" + defaultContextLoaderClassName
++						+ "] for @ContextConfiguration [" + contextConfiguration + "] and class [" + clazz + "]");
++			}
++			return (Class<? extends ContextLoader>) getClass().getClassLoader().loadClass(defaultContextLoaderClassName);
++		}
++		catch (ClassNotFoundException ex) {
++			throw new IllegalStateException("Could not load default ContextLoader class ["
++					+ defaultContextLoaderClassName + "]. Specify @ContextConfiguration's 'loader' "
++					+ "attribute or make the default loader class available.");
++		}
++	}
++
++	/**
++	 * Retrieve {@link ApplicationContext} resource locations for the supplied
++	 * {@link Class class}, using the supplied {@link ContextLoader} to
++	 * {@link ContextLoader#processLocations(Class, String...) process} the
++	 * locations.
++	 * <p>
++	 * Note that the {@link ContextConfiguration#inheritLocations()
++	 * inheritLocations} flag of {@link ContextConfiguration
++	 * &#064;ContextConfiguration} will be taken into consideration.
++	 * Specifically, if the <code>inheritLocations</code> flag is set to
++	 * <code>true</code>, locations defined in the annotated class will be
++	 * appended to the locations defined in superclasses.
++	 *
++	 * @param contextLoader the ContextLoader to use for processing the
++	 * locations (must not be <code>null</code>)
++	 * @param clazz the class for which to retrieve the resource locations (must
++	 * not be <code>null</code>)
++	 * @return the list of ApplicationContext resource locations for the
++	 * specified class, including locations from superclasses if appropriate
++	 * @throws IllegalArgumentException if {@link ContextConfiguration
++	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
++	 */
++	private String[] retrieveContextLocations(ContextLoader contextLoader, Class<?> clazz) {
++		Assert.notNull(contextLoader, "ContextLoader must not be null");
++		Assert.notNull(clazz, "Class must not be null");
++
++		List<String> locationsList = new ArrayList<String>();
++		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
++		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
++		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
++				+ annotationType + "] and class [" + clazz + "]");
++
++		while (declaringClass != null) {
++			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
++			if (logger.isTraceEnabled()) {
++				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for declaring class ["
++						+ declaringClass + "]");
++			}
++
++			String[] valueLocations = contextConfiguration.value();
++			String[] locations = contextConfiguration.locations();
++			if (!ObjectUtils.isEmpty(valueLocations) && !ObjectUtils.isEmpty(locations)) {
++				String msg = String.format(
++					"Test class [%s] has been configured with @ContextConfiguration's 'value' [%s] and 'locations' [%s] attributes. Only one declaration of resource locations is permitted per @ContextConfiguration annotation.",
++					declaringClass, ObjectUtils.nullSafeToString(valueLocations),
++					ObjectUtils.nullSafeToString(locations));
++				logger.error(msg);
++				throw new IllegalStateException(msg);
++			}
++			else if (!ObjectUtils.isEmpty(valueLocations)) {
++				locations = valueLocations;
++			}
++
++			locations = contextLoader.processLocations(declaringClass, locations);
++			locationsList.addAll(0, Arrays.<String> asList(locations));
++			declaringClass = contextConfiguration.inheritLocations() ? AnnotationUtils.findAnnotationDeclaringClass(
++				annotationType, declaringClass.getSuperclass()) : null;
++		}
++
++		return locationsList.toArray(new String[locationsList.size()]);
++	}
++	
++
++	/**
++	 * Build an ApplicationContext for this test context using the configured
++	 * ContextLoader and resource locations.
++	 *
++	 * @throws Exception if an error occurs while building the application
++	 * context
++	 * @return an application context
++	 */
++	ApplicationContext loadApplicationContext() throws Exception {
++		Assert.notNull(this.contextLoader, "Can not build an ApplicationContext with a NULL 'contextLoader'. "
++				+ "Consider annotating your test class with @ContextConfiguration.");
++		Assert.notNull(this.locations, "Can not build an ApplicationContext with a NULL 'locations' array. "
++				+ "Consider annotating your test class with @ContextConfiguration.");
++		return this.contextLoader.loadContext(this.locations);
++	}
++
++	/**
++	 * Convert the supplied context <code>key</code> to a String representation
++	 * for use in caching, logging, etc.
++     * @param key the path string to use as basis
++	 * @return a key
++	 */
++	private ContextCacheKey contextKey(Serializable key) {
++		return new ContextCacheKey( key);
++	}
++
++
++	/**
++	 * Get the {@link ApplicationContext application context} for this test
++	 * context, possibly cached.
++	 *
++	 * @return the application context
++	 * @throws IllegalStateException if an error occurs while retrieving the
++	 * application context
++	 */
++	public ApplicationContext getApplicationContext() {
++		synchronized (this.contextCache) {
++            final ContextCacheKey key = contextKey(this.locations);
++			ApplicationContext context = this.contextCache.get(key);
++			if (context == null) {
++				try {
++					context = loadApplicationContext();
++					this.contextCache.put(key, context);
++				}
++				catch (Exception ex) {
++					throw new IllegalStateException("Failed to load ApplicationContext", ex);
++				}
++			}
++			if (contextLoader != null) contextLoader.activateForThread(context, key);
++			return context;
++		}
++	}
++
++    /**
++	 * Get the {@link Class test class} for this test context.
++	 *
++	 * @return the test class (never <code>null</code>)
++	 */
++	public final Class<?> getTestClass() {
++		return this.testClass;
++	}
++
++
++	/**
++	 * Call this method to signal that the {@link org.springframework.context.ApplicationContext application
++	 * context} associated with this test context is <em>dirty</em> and should
++	 * be reloaded. Do this if a test has modified the context (for example, by
++	 * replacing a bean definition).
++	 */
++	public void markApplicationContextDirty() {
++		this.contextCache.setDirty(contextKey(this.locations));
++	}
++
++	
++	/**
++	 * Provide a String representation of this test context's state.
++	 */
++	@Override
++	public String toString() {
++		return new ToStringCreator(this)//
++		.append("testClass", this.testClass)//
++		.append("locations", this.locations)//
++		.toString();
++	}
++
++}
+\ No newline at end of file
+diff --git a/src/main/java/org/springframework/test/context/TestContext.java b/src/main/java/org/springframework/test/context/TestContext.java
+index 31228dc..0472d49 100644
+--- a/src/main/java/org/springframework/test/context/TestContext.java
++++ b/src/main/java/org/springframework/test/context/TestContext.java
+@@ -16,27 +16,22 @@
+ 
+ package org.springframework.test.context;
+ 
+-import java.io.Serializable;
+ import java.lang.reflect.Method;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.List;
+ 
+-import org.apache.commons.logging.Log;
+-import org.apache.commons.logging.LogFactory;
+-import org.springframework.beans.BeanUtils;
+ import org.springframework.context.ApplicationContext;
+ import org.springframework.core.AttributeAccessorSupport;
+-import org.springframework.core.annotation.AnnotationUtils;
+ import org.springframework.core.style.ToStringCreator;
+-import org.springframework.util.Assert;
+-import org.springframework.util.ObjectUtils;
+-import org.springframework.util.StringUtils;
+ 
+ /**
+  * TestContext encapsulates the context in which a test is executed, agnostic of
+  * the actual testing framework in use.
+- * 
++ *
++ * Notes on thread safety:
++ *
++ * All the calls to updateState will come in on the same thread, since the test frameworks normally run the entire test cycle for
++ * a given method on the same thread. This means the volatile state in this class is thread safe, but may need safe publication
++ * for collection of results from another thread.
++ *
+  * @author Sam Brannen
+  * @author Juergen Hoeller
+  * @since 2.5
+@@ -45,289 +40,50 @@ public class TestContext extends AttributeAccessorSupport {
+ 
+ 	private static final long serialVersionUID = -5827157174866681233L;
+ 
+-	private static final String STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME = "org.springframework.test.context.support.GenericXmlContextLoader";
+-
+-	private static final Log logger = LogFactory.getLog(TestContext.class);
+-
+-	private final ContextCache contextCache;
+-
+-	private final ContextLoader contextLoader;
+-
+-	private final String[] locations;
++	private volatile Object testInstance;
+ 
+-	private final Class<?> testClass;
++	private volatile Method testMethod;
+ 
+-	private Object testInstance;
++    private volatile Throwable testException;
+ 
+-	private Method testMethod;
++	private final TestClassContext testClassContext;
+ 
+-	private Throwable testException;
+ 
+ 
+-	/**
+-	 * Delegates to {@link #TestContext(Class, ContextCache, String)} with a
+-	 * value of <code>null</code> for the default <code>ContextLoader</code>
+-	 * class name.
+-	 */
+-	TestContext(Class<?> testClass, ContextCache contextCache) {
+-		this(testClass, contextCache, null);
+-	}
+-
+-	/**
+-	 * Construct a new test context for the supplied {@link Class test class}
+-	 * and {@link ContextCache context cache} and parse the corresponding
+-	 * {@link ContextConfiguration &#064;ContextConfiguration} annotation, if
+-	 * present.
+-	 * <p>
+-	 * If the supplied class name for the default ContextLoader is
+-	 * <code>null</code> or <em>empty</em> and no <code>ContextLoader</code>
+-	 * class is explicitly supplied via the
+-	 * <code>&#064;ContextConfiguration</code> annotation, a
+-	 * {@link org.springframework.test.context.support.GenericXmlContextLoader
+-	 * GenericXmlContextLoader} will be used instead.
+-	 * </p>
+-	 * 
+-	 * @param testClass the test class for which the test context should be
+-	 * constructed (must not be <code>null</code>)
+-	 * @param contextCache the context cache from which the constructed test
+-	 * context should retrieve application contexts (must not be
+-	 * <code>null</code>)
+-	 * @param defaultContextLoaderClassName the name of the default
+-	 * <code>ContextLoader</code> class to use (may be <code>null</code>)
+-	 */
+-	TestContext(Class<?> testClass, ContextCache contextCache, String defaultContextLoaderClassName) {
+-		Assert.notNull(testClass, "Test class must not be null");
+-		Assert.notNull(contextCache, "ContextCache must not be null");
+-
+-		if (!StringUtils.hasText(defaultContextLoaderClassName)) {
+-			defaultContextLoaderClassName = STANDARD_DEFAULT_CONTEXT_LOADER_CLASS_NAME;
+-		}
+-
+-		ContextConfiguration contextConfiguration = testClass.getAnnotation(ContextConfiguration.class);
+-		String[] locations = null;
+-		ContextLoader contextLoader = null;
+-
+-		if (contextConfiguration == null) {
+-			if (logger.isInfoEnabled()) {
+-				logger.info("@ContextConfiguration not found for class [" + testClass + "]");
+-			}
+-		}
+-		else {
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for class [" + testClass
+-						+ "]");
+-			}
+-
+-			Class<? extends ContextLoader> contextLoaderClass = retrieveContextLoaderClass(testClass,
+-				defaultContextLoaderClassName);
+-			contextLoader = (ContextLoader) BeanUtils.instantiateClass(contextLoaderClass);
+-			locations = retrieveContextLocations(contextLoader, testClass);
+-		}
+-
+-		this.testClass = testClass;
+-		this.contextCache = contextCache;
+-		this.contextLoader = contextLoader;
+-		this.locations = locations;
+-	}
+-
+-	/**
+-	 * <p>
+-	 * Retrieve the {@link ContextLoader} {@link Class} to use for the supplied
+-	 * {@link Class test class}.
+-	 * <ol>
+-	 * <li>If the {@link ContextConfiguration#loader() loader} attribute of
+-	 * {@link ContextConfiguration &#064;ContextConfiguration} is configured
+-	 * with an explicit class, that class will be returned.</li>
+-	 * <li>If a <code>loader</code> class is not specified, the class hierarchy
+-	 * will be traversed to find a parent class annotated with
+-	 * <code>&#064;ContextConfiguration</code>; go to step #1.</li>
+-	 * <li>If no explicit <code>loader</code> class is found after traversing
+-	 * the class hierarchy, an attempt will be made to load and return the class
+-	 * with the supplied <code>defaultContextLoaderClassName</code>.</li>
+-	 * </ol>
+-	 * 
+-	 * @param clazz the class for which to retrieve <code>ContextLoader</code>
+-	 * class; must not be <code>null</code>
+-	 * @param defaultContextLoaderClassName the name of the default
+-	 * <code>ContextLoader</code> class to use; must not be <code>null</code> or
+-	 * empty
+-	 * @return the <code>ContextLoader</code> class to use for the specified
+-	 * class
+-	 * @throws IllegalArgumentException if {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
+-	 */
+-	@SuppressWarnings("unchecked")
+-	private Class<? extends ContextLoader> retrieveContextLoaderClass(Class<?> clazz,
+-			String defaultContextLoaderClassName) {
+-		Assert.notNull(clazz, "Class must not be null");
+-		Assert.hasText(defaultContextLoaderClassName, "Default ContextLoader class name must not be null or empty");
+-
+-		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
+-		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
+-		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
+-				+ annotationType + "] and class [" + clazz + "]");
+-
+-		while (declaringClass != null) {
+-			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Processing ContextLoader for @ContextConfiguration [" + contextConfiguration
+-						+ "] and declaring class [" + declaringClass + "]");
+-			}
+-
+-			Class<? extends ContextLoader> contextLoaderClass = contextConfiguration.loader();
+-			if (!ContextLoader.class.equals(contextLoaderClass)) {
+-				if (logger.isDebugEnabled()) {
+-					logger.debug("Found explicit ContextLoader [" + contextLoaderClass
+-							+ "] for @ContextConfiguration [" + contextConfiguration + "] and declaring class ["
+-							+ declaringClass + "]");
+-				}
+-				return contextLoaderClass;
+-			}
+-
+-			declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType,
+-				declaringClass.getSuperclass());
+-		}
+-
+-		try {
+-			ContextConfiguration contextConfiguration = clazz.getAnnotation(ContextConfiguration.class);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Using default ContextLoader class [" + defaultContextLoaderClassName
+-						+ "] for @ContextConfiguration [" + contextConfiguration + "] and class [" + clazz + "]");
+-			}
+-			return (Class<? extends ContextLoader>) getClass().getClassLoader().loadClass(defaultContextLoaderClassName);
+-		}
+-		catch (ClassNotFoundException ex) {
+-			throw new IllegalStateException("Could not load default ContextLoader class ["
+-					+ defaultContextLoaderClassName + "]. Specify @ContextConfiguration's 'loader' "
+-					+ "attribute or make the default loader class available.");
+-		}
+-	}
+-
+-	/**
+-	 * Retrieve {@link ApplicationContext} resource locations for the supplied
+-	 * {@link Class class}, using the supplied {@link ContextLoader} to
+-	 * {@link ContextLoader#processLocations(Class, String...) process} the
+-	 * locations.
+-	 * <p>
+-	 * Note that the {@link ContextConfiguration#inheritLocations()
+-	 * inheritLocations} flag of {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} will be taken into consideration.
+-	 * Specifically, if the <code>inheritLocations</code> flag is set to
+-	 * <code>true</code>, locations defined in the annotated class will be
+-	 * appended to the locations defined in superclasses.
+-	 * 
+-	 * @param contextLoader the ContextLoader to use for processing the
+-	 * locations (must not be <code>null</code>)
+-	 * @param clazz the class for which to retrieve the resource locations (must
+-	 * not be <code>null</code>)
+-	 * @return the list of ApplicationContext resource locations for the
+-	 * specified class, including locations from superclasses if appropriate
+-	 * @throws IllegalArgumentException if {@link ContextConfiguration
+-	 * &#064;ContextConfiguration} is not <em>present</em> on the supplied class
+-	 */
+-	private String[] retrieveContextLocations(ContextLoader contextLoader, Class<?> clazz) {
+-		Assert.notNull(contextLoader, "ContextLoader must not be null");
+-		Assert.notNull(clazz, "Class must not be null");
+-
+-		List<String> locationsList = new ArrayList<String>();
+-		Class<ContextConfiguration> annotationType = ContextConfiguration.class;
+-		Class<?> declaringClass = AnnotationUtils.findAnnotationDeclaringClass(annotationType, clazz);
+-		Assert.notNull(declaringClass, "Could not find an 'annotation declaring class' for annotation type ["
+-				+ annotationType + "] and class [" + clazz + "]");
+-
+-		while (declaringClass != null) {
+-			ContextConfiguration contextConfiguration = declaringClass.getAnnotation(annotationType);
+-			if (logger.isTraceEnabled()) {
+-				logger.trace("Retrieved @ContextConfiguration [" + contextConfiguration + "] for declaring class ["
+-						+ declaringClass + "]");
+-			}
+-
+-			String[] valueLocations = contextConfiguration.value();
+-			String[] locations = contextConfiguration.locations();
+-			if (!ObjectUtils.isEmpty(valueLocations) && !ObjectUtils.isEmpty(locations)) {
+-				String msg = String.format(
+-					"Test class [%s] has been configured with @ContextConfiguration's 'value' [%s] and 'locations' [%s] attributes. Only one declaration of resource locations is permitted per @ContextConfiguration annotation.",
+-					declaringClass, ObjectUtils.nullSafeToString(valueLocations),
+-					ObjectUtils.nullSafeToString(locations));
+-				logger.error(msg);
+-				throw new IllegalStateException(msg);
+-			}
+-			else if (!ObjectUtils.isEmpty(valueLocations)) {
+-				locations = valueLocations;
+-			}
+-
+-			locations = contextLoader.processLocations(declaringClass, locations);
+-			locationsList.addAll(0, Arrays.<String> asList(locations));
+-			declaringClass = contextConfiguration.inheritLocations() ? AnnotationUtils.findAnnotationDeclaringClass(
+-				annotationType, declaringClass.getSuperclass()) : null;
+-		}
+-
+-		return locationsList.toArray(new String[locationsList.size()]);
+-	}
+-
+-	/**
+-	 * Load an <code>ApplicationContext</code> for this test context using the
+-	 * configured <code>ContextLoader</code> and resource locations.
+-	 * 
+-	 * @throws Exception if an error occurs while loading the application
+-	 * context
+-	 */
+-	private ApplicationContext loadApplicationContext() throws Exception {
+-		Assert.notNull(this.contextLoader, "Can not load an ApplicationContext with a NULL 'contextLoader'. "
+-				+ "Consider annotating your test class with @ContextConfiguration.");
+-		Assert.notNull(this.locations, "Can not load an ApplicationContext with a NULL 'locations' array. "
+-				+ "Consider annotating your test class with @ContextConfiguration.");
+-		return this.contextLoader.loadContext(this.locations);
++	public TestContext(TestClassContext testClassContext, Object testInstance, Method testMethod) {
++		this.testClassContext = testClassContext;
++		this.testInstance = testInstance;
++		this.testMethod = testMethod;
+ 	}
+ 
+-	/**
+-	 * Convert the supplied context <code>key</code> to a String representation
+-	 * for use in caching, logging, etc.
+-	 */
+-	private String contextKeyString(Serializable key) {
+-		return ObjectUtils.nullSafeToString(key);
+-	}
+ 
+-	/**
++    /**
+ 	 * Get the {@link ApplicationContext application context} for this test
+ 	 * context, possibly cached.
+-	 * 
++	 *
+ 	 * @return the application context
+ 	 * @throws IllegalStateException if an error occurs while retrieving the
+ 	 * application context
+ 	 */
+ 	public ApplicationContext getApplicationContext() {
+-		synchronized (this.contextCache) {
+-			ApplicationContext context = this.contextCache.get(contextKeyString(this.locations));
+-			if (context == null) {
+-				try {
+-					context = loadApplicationContext();
+-					this.contextCache.put(contextKeyString(this.locations), context);
+-				}
+-				catch (Exception ex) {
+-					throw new IllegalStateException("Failed to load ApplicationContext", ex);
+-				}
+-			}
+-			return context;
+-		}
++		return testClassContext.getApplicationContext();
+ 	}
+ 
+ 	/**
+ 	 * Get the {@link Class test class} for this test context.
+-	 * 
++	 *
+ 	 * @return the test class (never <code>null</code>)
+ 	 */
+ 	public final Class<?> getTestClass() {
+-		return this.testClass;
++		return this.testClassContext.getTestClass();
+ 	}
+ 
+ 	/**
+ 	 * Get the current {@link Object test instance} for this test context.
+ 	 * <p>
+ 	 * Note: this is a mutable property.
+-	 * 
++	 *
+ 	 * @return the current test instance (may be <code>null</code>)
+-	 * @see #updateState(Object,Method,Throwable)
+ 	 */
+ 	public final Object getTestInstance() {
+ 		return this.testInstance;
+@@ -337,9 +93,8 @@ public class TestContext extends AttributeAccessorSupport {
+ 	 * Get the current {@link Method test method} for this test context.
+ 	 * <p>
+ 	 * Note: this is a mutable property.
+-	 * 
++	 *
+ 	 * @return the current test method (may be <code>null</code>)
+-	 * @see #updateState(Object, Method, Throwable)
+ 	 */
+ 	public final Method getTestMethod() {
+ 		return this.testMethod;
+@@ -350,10 +105,9 @@ public class TestContext extends AttributeAccessorSupport {
+ 	 * the {@link #getTestMethod() test method}.
+ 	 * <p>
+ 	 * Note: this is a mutable property.
+-	 * 
++	 *
+ 	 * @return the exception that was thrown, or <code>null</code> if no
+ 	 * exception was thrown
+-	 * @see #updateState(Object, Method, Throwable)
+ 	 */
+ 	public final Throwable getTestException() {
+ 		return this.testException;
+@@ -366,13 +120,13 @@ public class TestContext extends AttributeAccessorSupport {
+ 	 * replacing a bean definition).
+ 	 */
+ 	public void markApplicationContextDirty() {
+-		this.contextCache.setDirty(contextKeyString(this.locations));
++    	 testClassContext.markApplicationContextDirty();
+ 	}
+ 
+ 	/**
+ 	 * Update this test context to reflect the state of the currently executing
+ 	 * test.
+-	 * 
++	 *
+ 	 * @param testInstance the current test instance (may be <code>null</code>)
+ 	 * @param testMethod the current test method (may be <code>null</code>)
+ 	 * @param testException the exception that was thrown in the test method, or
+@@ -390,8 +144,7 @@ public class TestContext extends AttributeAccessorSupport {
+ 	@Override
+ 	public String toString() {
+ 		return new ToStringCreator(this)//
+-		.append("testClass", this.testClass)//
+-		.append("locations", this.locations)//
++		.append("testClass", testClassContext.toString())//
+ 		.append("testInstance", this.testInstance)//
+ 		.append("testMethod", this.testMethod)//
+ 		.append("testException", this.testException)//
+diff --git a/src/main/java/org/springframework/test/context/TestContextManager.java b/src/main/java/org/springframework/test/context/TestContextManager.java
+index e463c32..f533a24 100644
+--- a/src/main/java/org/springframework/test/context/TestContextManager.java
++++ b/src/main/java/org/springframework/test/context/TestContextManager.java
+@@ -88,14 +88,15 @@ public class TestContextManager {
+ 	 */
+ 	static final ContextCache contextCache = new ContextCache();
+ 
+-	private final TestContext testContext;
+-
++	private final TestClassContext testClassContext;
++	private final ThreadLocal<TestContext> testContext = new ThreadLocal<TestContext>();
+ 	private final List<TestExecutionListener> testExecutionListeners = new ArrayList<TestExecutionListener>();
+ 
+ 
+ 	/**
+ 	 * Delegates to {@link #TestContextManager(Class, String)} with a value of
+ 	 * <code>null</code> for the default <code>ContextLoader</code> class name.
++     * @param testClass the test class to be managed
+ 	 */
+ 	public TestContextManager(Class<?> testClass) {
+ 		this(testClass, null);
+@@ -116,23 +117,35 @@ public class TestContextManager {
+ 	 * @see #retrieveTestExecutionListeners(Class)
+ 	 */
+ 	public TestContextManager(Class<?> testClass, String defaultContextLoaderClassName) {
+-		this.testContext = new TestContext(testClass, contextCache, defaultContextLoaderClassName);
++		testClassContext = new TestClassContext(testClass, contextCache, defaultContextLoaderClassName);
+ 		registerTestExecutionListeners(retrieveTestExecutionListeners(testClass));
+ 	}
+ 
+ 	/**
+ 	 * Returns the {@link TestContext} managed by this
+ 	 * <code>TestContextManager</code>.
++     * @return the test context
+ 	 */
+ 	protected final TestContext getTestContext() {
+-		return this.testContext;
++		if (testContext.get() == null){
++			throw new IllegalStateException("At this stage we expect the testcontext to be set up in TrheadLocal");
++		}
++		return this.testContext.get();
+ 	}
+ 
++    protected final TestContext getOrCreateTestContext() {
++        if (testContext.get() == null){
++            testContext.set( new TestContext(testClassContext, null, null));
++        }
++        return this.testContext.get();
++    }
++
+ 	/**
+ 	 * Register the supplied {@link TestExecutionListener
+ 	 * TestExecutionListeners} by appending them to the set of listeners used by
+ 	 * this <code>TestContextManager</code>.
+-	 */
++     * @param testExecutionListeners the listeners to register
++     */
+ 	public void registerTestExecutionListeners(TestExecutionListener... testExecutionListeners) {
+ 		for (TestExecutionListener listener : testExecutionListeners) {
+ 			if (logger.isTraceEnabled()) {
+@@ -146,7 +159,8 @@ public class TestContextManager {
+ 	 * Gets an {@link Collections#unmodifiableList(List) unmodifiable} copy of
+ 	 * the {@link TestExecutionListener TestExecutionListeners} registered for
+ 	 * this <code>TestContextManager</code>.
+-	 */
++     * @return the test execution listeners
++     */
+ 	public final List<TestExecutionListener> getTestExecutionListeners() {
+ 		return Collections.unmodifiableList(this.testExecutionListeners);
+ 	}
+@@ -154,7 +168,8 @@ public class TestContextManager {
+ 	/**
+ 	 * Gets a copy of the {@link TestExecutionListener TestExecutionListeners}
+ 	 * registered for this <code>TestContextManager</code> in reverse order.
+-	 */
++     * @return test execution listeners in reverse order
++     */
+ 	private List<TestExecutionListener> getReversedTestExecutionListeners() {
+ 		List<TestExecutionListener> listenersReversed = new ArrayList<TestExecutionListener>(
+ 			getTestExecutionListeners());
+@@ -229,7 +244,7 @@ public class TestContextManager {
+ 		List<TestExecutionListener> listeners = new ArrayList<TestExecutionListener>(classesList.size());
+ 		for (Class<? extends TestExecutionListener> listenerClass : classesList) {
+ 			try {
+-				listeners.add((TestExecutionListener) BeanUtils.instantiateClass(listenerClass));
++				listeners.add( BeanUtils.instantiateClass(listenerClass));
+ 			}
+ 			catch (NoClassDefFoundError err) {
+ 				if (defaultListeners) {
+@@ -249,7 +264,8 @@ public class TestContextManager {
+ 
+ 	/**
+ 	 * Determine the default {@link TestExecutionListener} classes.
+-	 */
++     * @return the set of default test execution listeners
++     */
+ 	@SuppressWarnings("unchecked")
+ 	protected Set<Class<? extends TestExecutionListener>> getDefaultTestExecutionListenerClasses() {
+ 		Set<Class<? extends TestExecutionListener>> defaultListenerClasses = new LinkedHashSet<Class<? extends TestExecutionListener>>();
+@@ -284,11 +300,11 @@ public class TestContextManager {
+ 	 * @see #getTestExecutionListeners()
+ 	 */
+ 	public void beforeTestClass() throws Exception {
+-		final Class<?> testClass = getTestContext().getTestClass();
+-		if (logger.isTraceEnabled()) {
+-			logger.trace("beforeTestClass(): class [" + testClass + "]");
+-		}
+-		getTestContext().updateState(null, null, null);
++		getOrCreateTestContext().updateState(null, null, null);
++        final Class<?> testClass = getTestContext().getTestClass();
++        if (logger.isTraceEnabled()) {
++            logger.trace("beforeTestClass(): class [" + testClass + "]");
++        }
+ 
+ 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
+ 			try {
+@@ -326,7 +342,7 @@ public class TestContextManager {
+ 		if (logger.isTraceEnabled()) {
+ 			logger.trace("prepareTestInstance(): instance [" + testInstance + "]");
+ 		}
+-		getTestContext().updateState(testInstance, null, null);
++		getOrCreateTestContext().updateState(testInstance, null, null);
+ 
+ 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
+ 			try {
+@@ -367,7 +383,7 @@ public class TestContextManager {
+ 		if (logger.isTraceEnabled()) {
+ 			logger.trace("beforeTestMethod(): instance [" + testInstance + "], method [" + testMethod + "]");
+ 		}
+-		getTestContext().updateState(testInstance, testMethod, null);
++		getOrCreateTestContext().updateState(testInstance, testMethod, null);
+ 
+ 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
+ 			try {
+@@ -478,6 +494,7 @@ public class TestContextManager {
+ 				}
+ 			}
+ 		}
++        testContext.remove(); 
+ 		if (afterTestClassException != null) {
+ 			throw afterTestClassException;
+ 		}
+diff --git a/src/main/java/org/springframework/test/context/support/AbstractGenericContextLoader.java b/src/main/java/org/springframework/test/context/support/AbstractGenericContextLoader.java
+index eba8207..3401b4a 100644
+--- a/src/main/java/org/springframework/test/context/support/AbstractGenericContextLoader.java
++++ b/src/main/java/org/springframework/test/context/support/AbstractGenericContextLoader.java
+@@ -16,20 +16,23 @@
+ 
+ package org.springframework.test.context.support;
+ 
++
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ 
+ import org.springframework.beans.factory.support.BeanDefinitionReader;
+ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+ import org.springframework.context.ConfigurableApplicationContext;
++import org.springframework.context.ApplicationContext;
+ import org.springframework.context.annotation.AnnotationConfigUtils;
+ import org.springframework.context.support.GenericApplicationContext;
+ import org.springframework.util.StringUtils;
++import org.springframework.test.context.ContextCacheKey;
+ 
+ /**
+  * Abstract, generic extension of {@link AbstractContextLoader} which loads a
+  * {@link GenericApplicationContext} from the <em>locations</em> provided to
+- * {@link #loadContext(String...)}.
++ * {@link #loadContext(String[])} 
+  *
+  * <p>Concrete subclasses must provide an appropriate
+  * {@link #createBeanDefinitionReader(GenericApplicationContext) BeanDefinitionReader}.
+@@ -37,7 +40,7 @@ import org.springframework.util.StringUtils;
+  * @author Sam Brannen
+  * @author Juergen Hoeller
+  * @since 2.5
+- * @see #loadContext(String...)
++ * @see #loadContext(String[]) 
+  */
+ public abstract class AbstractGenericContextLoader extends AbstractContextLoader {
+ 
+@@ -56,7 +59,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
+ 	 * <li>Delegates to {@link AnnotationConfigUtils} for
+ 	 * {@link AnnotationConfigUtils#registerAnnotationConfigProcessors(org.springframework.beans.factory.support.BeanDefinitionRegistry) registering}
+ 	 * annotation configuration processors.</li>
+-	 * <li>Calls {@link #customizeContext(GenericApplicationContext)} to allow
++	 * <li>Calls {@link #customizeContext(org.springframework.context.support.GenericApplicationContext, org.springframework.test.context.ContextCacheKey)}  to allow
+ 	 * for customizing the context before it is refreshed.</li>
+ 	 * <li>{@link ConfigurableApplicationContext#refresh() Refreshes} the
+ 	 * context and registers a JVM shutdown hook for it.</li>
+@@ -80,13 +83,30 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
+ 		customizeBeanFactory(context.getDefaultListableBeanFactory());
+ 		createBeanDefinitionReader(context).loadBeanDefinitions(locations);
+ 		AnnotationConfigUtils.registerAnnotationConfigProcessors(context);
+-		customizeContext(context);
++		customizeContext(context, new ContextCacheKey( locations));
+ 		context.refresh();
+ 		context.registerShutdownHook();
+ 		return context;
+ 	}
+ 
+ 	/**
++	 * Activates this context for the current thread.
++	 *
++	 * This method is called every time an applicationContext is assigned to a thread,
++	 * including the first time the context is created. The thread may have previously been assigned
++	 *  a different applicationContext.
++	 *
++	 * This method only needs to be implemented if you use web scopes AND run multi-threaded tests.
++	 *
++	 * @param applicationContext The context that is to be activated
++	 * @param contextCacheKey The cache key that the context loader can use to cache additional data
++	 * @since 3.0
++	 */
++
++	public void activateForThread(ApplicationContext applicationContext, ContextCacheKey contextCacheKey) {
++	}
++
++	/**
+ 	 * Prepare the {@link GenericApplicationContext} created by this ContextLoader.
+ 	 * Called <i>before</> bean definitions are read.
+ 	 * <p>The default implementation is empty. Can be overridden in subclasses to
+@@ -96,6 +116,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
+ 	 * @see org.springframework.context.support.GenericApplicationContext#setResourceLoader
+ 	 * @see org.springframework.context.support.GenericApplicationContext#setId
+ 	 */
++	@SuppressWarnings({"UnusedDeclaration"})
+ 	protected void prepareContext(GenericApplicationContext context) {
+ 	}
+ 
+@@ -111,6 +132,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
+ 	 * @see org.springframework.beans.factory.support.DefaultListableBeanFactory#setAllowCircularReferences(boolean)
+ 	 * @see org.springframework.beans.factory.support.DefaultListableBeanFactory#setAllowRawInjectionDespiteWrapping(boolean)
+ 	 */
++	@SuppressWarnings({"UnusedDeclaration"})
+ 	protected void customizeBeanFactory(DefaultListableBeanFactory beanFactory) {
+ 	}
+ 
+@@ -132,9 +154,11 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
+ 	 * <p>The default implementation is empty but can be overridden in subclasses
+ 	 * to customize the application context.
+ 	 * @param context the newly created application context
+-	 * @see #loadContext(String...)
++	 * @param contextCacheKey The cache key to be used for caching within this loader
++	 * @see #loadContext(String[]) 
+ 	 */
+-	protected void customizeContext(GenericApplicationContext context) {
++	@SuppressWarnings({"UnusedDeclaration"})
++	protected void customizeContext(GenericApplicationContext context, ContextCacheKey contextCacheKey) {
+ 	}
+ 
+ }
+diff --git a/src/test/java/org/springframework/test/context/ClassLevelDirtiesContextTests.java b/src/test/java/org/springframework/test/context/ClassLevelDirtiesContextTests.java
+index 48b3f43..b2f60b1 100644
+--- a/src/test/java/org/springframework/test/context/ClassLevelDirtiesContextTests.java
++++ b/src/test/java/org/springframework/test/context/ClassLevelDirtiesContextTests.java
+@@ -102,30 +102,31 @@ public class ClassLevelDirtiesContextTests {
+ 
+ 	@Test
+ 	public void verifyDirtiesContextBehavior() throws Exception {
++		int expectedSize  = 1; // TestContextManager.contextCache.size() +1 ;
+ 
+ 		runTestClassAndAssertStats(CleanTestCase.class, 1);
+-		assertCacheStats("after clean test class", 1, cacheHits.get(), cacheMisses.incrementAndGet());
++		assertCacheStats("after clean test class", expectedSize, cacheHits.get(), cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(ClassLevelDirtiesContextWithCleanMethodsAndDefaultModeTestCase.class, 1);
+ 		assertCacheStats("after class-level @DirtiesContext with clean test method and default class mode", 0,
+ 			cacheHits.incrementAndGet(), cacheMisses.get());
+ 
+ 		runTestClassAndAssertStats(CleanTestCase.class, 1);
+-		assertCacheStats("after clean test class", 1, cacheHits.get(), cacheMisses.incrementAndGet());
++		assertCacheStats("after clean test class",expectedSize, cacheHits.get(), cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(ClassLevelDirtiesContextWithCleanMethodsAndAfterClassModeTestCase.class, 1);
+ 		assertCacheStats("after class-level @DirtiesContext with clean test method and AFTER_CLASS mode", 0,
+ 			cacheHits.incrementAndGet(), cacheMisses.get());
+ 
+ 		runTestClassAndAssertStats(CleanTestCase.class, 1);
+-		assertCacheStats("after clean test class", 1, cacheHits.get(), cacheMisses.incrementAndGet());
++		assertCacheStats("after clean test class", expectedSize, cacheHits.get(), cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(ClassLevelDirtiesContextWithAfterEachTestMethodModeTestCase.class, 3);
+ 		assertCacheStats("after class-level @DirtiesContext with clean test method and AFTER_EACH_TEST_METHOD mode", 0,
+ 			cacheHits.incrementAndGet(), cacheMisses.addAndGet(2));
+ 
+ 		runTestClassAndAssertStats(CleanTestCase.class, 1);
+-		assertCacheStats("after clean test class", 1, cacheHits.get(), cacheMisses.incrementAndGet());
++		assertCacheStats("after clean test class", expectedSize, cacheHits.get(), cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(ClassLevelDirtiesContextWithDirtyMethodsTestCase.class, 1);
+ 		assertCacheStats("after class-level @DirtiesContext with dirty test method", 0, cacheHits.incrementAndGet(),
+@@ -140,7 +141,7 @@ public class ClassLevelDirtiesContextTests {
+ 			cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(CleanTestCase.class, 1);
+-		assertCacheStats("after clean test class", 1, cacheHits.get(), cacheMisses.incrementAndGet());
++		assertCacheStats("after clean test class", expectedSize, cacheHits.get(), cacheMisses.incrementAndGet());
+ 
+ 		runTestClassAndAssertStats(ClassLevelDirtiesContextWithCleanMethodsAndAfterClassModeTestCase.class, 1);
+ 		assertCacheStats("after class-level @DirtiesContext with clean test method and AFTER_CLASS mode", 0,
+diff --git a/src/test/java/org/springframework/test/context/support/CustomizedGenericXmlContextLoaderTests.java b/src/test/java/org/springframework/test/context/support/CustomizedGenericXmlContextLoaderTests.java
+index a07d1d3..bb2408e 100644
+--- a/src/test/java/org/springframework/test/context/support/CustomizedGenericXmlContextLoaderTests.java
++++ b/src/test/java/org/springframework/test/context/support/CustomizedGenericXmlContextLoaderTests.java
+@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
+ import org.junit.Test;
+ 
+ import org.springframework.context.support.GenericApplicationContext;
++import org.springframework.test.context.ContextCacheKey;
+ 
+ /**
+  * Unit test which verifies that extensions of
+@@ -46,7 +47,7 @@ public class CustomizedGenericXmlContextLoaderTests {
+ 		new GenericXmlContextLoader() {
+ 
+ 			@Override
+-			protected void customizeContext(GenericApplicationContext context) {
++			protected void customizeContext(GenericApplicationContext context, ContextCacheKey contextCacheKey) {
+ 				assertFalse("The context should not yet have been refreshed.", context.isActive());
+ 				builder.append(expectedContents);
+ 			}
+diff --git a/test.iml b/test.iml
+index a5a65c1..4aed92e 100644
+--- a/test.iml
++++ b/test.iml
+@@ -1,134 +1,136 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<module relativePaths="true" type="JAVA_MODULE" version="4">
+-  <component name="NewModuleRootManager" inherit-compiler-output="true">
+-    <exclude-output />
+-    <content url="file://$MODULE_DIR$">
+-      <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
+-      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" isTestSource="false" />
+-      <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
+-      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" isTestSource="true" />
+-      <excludeFolder url="file://$MODULE_DIR$/target" />
+-    </content>
+-    <orderEntry type="sourceFolder" forTests="false" />
+-    <orderEntry type="inheritedJdk" />
+-    <orderEntry type="module" module-name="beans" />
+-    <orderEntry type="module" module-name="context" />
+-    <orderEntry type="module" module-name="core" />
+-    <orderEntry type="module" module-name="jdbc" />
+-    <orderEntry type="module" module-name="orm" />
+-    <orderEntry type="module" module-name="transaction" />
+-    <orderEntry type="module" module-name="web" />
+-    <orderEntry type="module" module-name="web-portlet" />
+-    <orderEntry type="module" module-name="web-servlet" />
+-    <orderEntry type="library" name="AspectJ" level="project" />
+-    <orderEntry type="library" name="Commons Logging" level="project" />
+-    <orderEntry type="library" name="EasyMock" level="project" />
+-    <orderEntry type="library" name="javax.el" level="project" />
+-    <orderEntry type="library" name="JUnit" level="project" />
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/javax.activation/com.springsource.javax.activation/1.1.0/com.springsource.javax.activation-1.1.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/javax.activation/com.springsource.javax.activation/1.1.0/com.springsource.javax.activation-sources-1.1.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/javax.persistence/com.springsource.javax.persistence/1.0.0/com.springsource.javax.persistence-1.0.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/javax.persistence/com.springsource.javax.persistence/1.0.0/com.springsource.javax.persistence-sources-1.0.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/javax.portlet/com.springsource.javax.portlet/2.0.0/com.springsource.javax.portlet-2.0.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/javax.portlet/com.springsource.javax.portlet/2.0.0/com.springsource.javax.portlet-sources-2.0.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet/2.5.0/com.springsource.javax.servlet-2.5.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet/2.5.0/com.springsource.javax.servlet-sources-2.5.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet.jsp/2.1.0/com.springsource.javax.servlet.jsp-2.1.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet.jsp/2.1.0/com.springsource.javax.servlet.jsp-sources-2.1.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/org.junit/com.springsource.junit/3.8.2/com.springsource.junit-3.8.2.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/org.junit/com.springsource.junit/3.8.2/com.springsource.junit-sources-3.8.2.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/org.apache.taglibs/com.springsource.org.apache.taglibs.standard/1.1.2/com.springsource.org.apache.taglibs.standard-1.1.2.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/org.apache.taglibs/com.springsource.org.apache.taglibs.standard/1.1.2/com.springsource.org.apache.taglibs.standard-sources-1.1.2.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/org.hibernate/com.springsource.org.hibernate/3.3.1.GA/com.springsource.org.hibernate-3.3.1.GA.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/org.hibernate/com.springsource.org.hibernate/3.3.1.GA/com.springsource.org.hibernate-sources-3.3.1.GA.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-    <orderEntry type="module-library">
+-      <library>
+-        <CLASSES>
+-          <root url="jar://$IVY_CACHE$/org.testng/com.springsource.org.testng/5.10.0/com.springsource.org.testng-5.10.0.jar!/" />
+-        </CLASSES>
+-        <JAVADOC />
+-        <SOURCES>
+-          <root url="jar://$IVY_CACHE$/org.testng/com.springsource.org.testng/5.10.0/com.springsource.org.testng-sources-5.10.0.jar!/" />
+-        </SOURCES>
+-      </library>
+-    </orderEntry>
+-  </component>
+-  <component name="copyright">
+-    <Base>
+-      <setting name="state" value="2" />
+-    </Base>
+-  </component>
+-</module>
+-
++<?xml version="1.0" encoding="UTF-8"?>
++<module relativePaths="true" type="JAVA_MODULE" version="4">
++  <component name="NewModuleRootManager" inherit-compiler-output="true">
++    <exclude-output />
++    <content url="file://$MODULE_DIR$">
++      <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
++      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" isTestSource="false" />
++      <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
++      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" isTestSource="true" />
++      <excludeFolder url="file://$MODULE_DIR$/target" />
++    </content>
++    <orderEntry type="sourceFolder" forTests="false" />
++    <orderEntry type="inheritedJdk" />
++    <orderEntry type="module" module-name="beans" />
++    <orderEntry type="module" module-name="context" />
++    <orderEntry type="module" module-name="core" />
++    <orderEntry type="module" module-name="jdbc" />
++    <orderEntry type="module" module-name="orm" />
++    <orderEntry type="module" module-name="transaction" />
++    <orderEntry type="module" module-name="web" />
++    <orderEntry type="module" module-name="web-portlet" />
++    <orderEntry type="module" module-name="web-servlet" />
++    <orderEntry type="library" name="AspectJ" level="project" />
++    <orderEntry type="library" name="Commons Logging" level="project" />
++    <orderEntry type="library" name="EasyMock" level="project" />
++    <orderEntry type="library" name="javax.el" level="project" />
++    <orderEntry type="library" name="JUnit" level="project" />
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/javax.activation/com.springsource.javax.activation/1.1.0/com.springsource.javax.activation-1.1.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/javax.activation/com.springsource.javax.activation/1.1.0/com.springsource.javax.activation-sources-1.1.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/javax.persistence/com.springsource.javax.persistence/1.0.0/com.springsource.javax.persistence-1.0.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/javax.persistence/com.springsource.javax.persistence/1.0.0/com.springsource.javax.persistence-sources-1.0.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/javax.portlet/com.springsource.javax.portlet/2.0.0/com.springsource.javax.portlet-2.0.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/javax.portlet/com.springsource.javax.portlet/2.0.0/com.springsource.javax.portlet-sources-2.0.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet/2.5.0/com.springsource.javax.servlet-2.5.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet/2.5.0/com.springsource.javax.servlet-sources-2.5.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet.jsp/2.1.0/com.springsource.javax.servlet.jsp-2.1.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/javax.servlet/com.springsource.javax.servlet.jsp/2.1.0/com.springsource.javax.servlet.jsp-sources-2.1.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/org.junit/com.springsource.junit/3.8.2/com.springsource.junit-3.8.2.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/org.junit/com.springsource.junit/3.8.2/com.springsource.junit-sources-3.8.2.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/org.apache.taglibs/com.springsource.org.apache.taglibs.standard/1.1.2/com.springsource.org.apache.taglibs.standard-1.1.2.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/org.apache.taglibs/com.springsource.org.apache.taglibs.standard/1.1.2/com.springsource.org.apache.taglibs.standard-sources-1.1.2.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/org.hibernate/com.springsource.org.hibernate/3.3.1.GA/com.springsource.org.hibernate-3.3.1.GA.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/org.hibernate/com.springsource.org.hibernate/3.3.1.GA/com.springsource.org.hibernate-sources-3.3.1.GA.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="module-library">
++      <library>
++        <CLASSES>
++          <root url="jar://$IVY_CACHE$/org.testng/com.springsource.org.testng/5.10.0/com.springsource.org.testng-5.10.0.jar!/" />
++        </CLASSES>
++        <JAVADOC />
++        <SOURCES>
++          <root url="jar://$IVY_CACHE$/org.testng/com.springsource.org.testng/5.10.0/com.springsource.org.testng-sources-5.10.0.jar!/" />
++        </SOURCES>
++      </library>
++    </orderEntry>
++    <orderEntry type="library" name="Jboss" level="application" />
++    <orderEntry type="library" name="Misc" level="application" />
++  </component>
++  <component name="copyright">
++    <Base>
++      <setting name="state" value="2" />
++    </Base>
++  </component>
++</module>
++

@@ -1,4 +1,6 @@
 #!/bin/bash
-cd springTrunk
-patch -p0 <../completeFix.patch
+cd springTrunk/org.springframework.test
+patch -p1 <../1concurrencyFix2051.patch
+patch -p1 <../2tests2051.patch
+patch -p1 <../3dirtiesContext2051.patch
 
